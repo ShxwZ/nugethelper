@@ -12,5 +12,6 @@ namespace BvNugetPreviewGenerator.Generate
         event Action<int, string> ProgressEvent;
         event Action<PackageGenerateResult> CompleteEvent;
         Task GeneratePackageAsync(IEnumerable<string> projectPaths, string localRepoPath, string buildConfiguration);
+        void Cancel();
     }
 }

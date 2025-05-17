@@ -34,6 +34,7 @@ namespace BvNugetPreviewGenerator.Generate
             _Worker.DoWork += Worker_DoWork;
             _Worker.ProgressChanged += Worker_ProgressChanged;
             _Worker.RunWorkerCompleted += Worker_RunWorkerCompleted;
+            _Worker.WorkerSupportsCancellation = true;
         }
 
         private void Worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -64,13 +65,8 @@ namespace BvNugetPreviewGenerator.Generate
             context.ProjectFilename = Path.GetFileName(_ProjectPath);
             context.TempPath = Path.GetTempPath();
 
-
-
             try
             {
-
-
-
                 Progress(0, "Performing Initial Checks");
                 PackageGenerateException
                     .ThrowIf(string.IsNullOrWhiteSpace(_LocalRepoPath),
@@ -88,12 +84,32 @@ namespace BvNugetPreviewGenerator.Generate
                 Progress(5, "Initial Checks Complete");
                 Progress(10, "Get Project Version");
                 GetProjectVersion(context);
+                if (_Worker.CancellationPending)
+                {
+                    e.Cancel = true;
+                    return;
+                }
                 Progress(15, "Building Project");
                 RunDotNetBuild(context);
+                if (_Worker.CancellationPending)
+                {
+                    e.Cancel = true;
+                    return;
+                }
                 Progress(75, "Pushing Project to Nuget");
                 RunNugetPush(context);
+                if (_Worker.CancellationPending)
+                {
+                    e.Cancel = true;
+                    return;
+                }
                 Progress(95, "Cleaning Up");
                 CleanUp(context);
+                if (_Worker.CancellationPending)
+                {
+                    e.Cancel = true;
+                    return;
+                }
                 Progress(100, "Generation Complete");
                 _Result = PackageGenerateResult.CreateSuccessResult(context);
             }
@@ -314,6 +330,11 @@ namespace BvNugetPreviewGenerator.Generate
 
                 await GeneratePackageInternalAsync(); 
             }
+        }
+        public void Cancel()
+        {
+            if (_Worker != null && _Worker.IsBusy && _Worker.WorkerSupportsCancellation)
+                _Worker.CancelAsync();
         }
     }
 }

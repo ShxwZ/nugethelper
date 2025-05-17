@@ -52,9 +52,6 @@ namespace BvNugetPreviewGenerator.Generate
                 return;
             }
 
-            btnOk.Enabled = true;
-
-
 
             if (result.ResultType == PreviewPackageGenerateResultType.Success)
             {
@@ -80,10 +77,12 @@ namespace BvNugetPreviewGenerator.Generate
             Close();
         }
 
-        private async Task GenerateForm_ShownAsync(object sender, EventArgs e)
+        private async void GenerateForm_ShownAsync(object sender, EventArgs e)
         {
             StartProgress();
             await _Generator.GeneratePackageAsync(ProjectPaths, LocalRepoPath, BuildConfiguration);
+
+            btnOk.Enabled = true;
         }
 
         private void Generator_CompleteEvent(PackageGenerateResult obj)
@@ -104,6 +103,12 @@ namespace BvNugetPreviewGenerator.Generate
             prgProgress.Value = progress;
             lblProgressUpdate.Text = message;
             Application.DoEvents();
+        }
+
+        private void btnCancel_Click(object sender, EventArgs e)
+        {
+            _Generator.Cancel();
+            Close();
         }
     }
 }

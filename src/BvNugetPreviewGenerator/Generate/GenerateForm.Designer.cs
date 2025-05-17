@@ -34,6 +34,7 @@
             this.lblHeading = new System.Windows.Forms.Label();
             this.picMainIcon = new System.Windows.Forms.PictureBox();
             this.lblMainText = new System.Windows.Forms.Label();
+            this.btnCancel = new System.Windows.Forms.Button();
             this.pnlProgress = new System.Windows.Forms.Panel();
             this.lblProgressUpdate = new System.Windows.Forms.Label();
             this.prgProgress = new System.Windows.Forms.ProgressBar();
@@ -78,6 +79,7 @@
             this.panel1.Controls.Add(this.lblHeading);
             this.panel1.Controls.Add(this.picMainIcon);
             this.panel1.Controls.Add(this.lblMainText);
+            this.panel1.Controls.Add(this.btnCancel);
             this.panel1.Location = new System.Drawing.Point(3, 3);
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(630, 84);
@@ -110,6 +112,17 @@
             this.lblMainText.Size = new System.Drawing.Size(402, 33);
             this.lblMainText.TabIndex = 2;
             this.lblMainText.Text = "lblMainText";
+            // 
+            // btnCancel
+            // 
+            this.btnCancel.Anchor = System.Windows.Forms.AnchorStyles.None;
+            this.btnCancel.Location = new System.Drawing.Point(513, 16);
+            this.btnCancel.Name = "btnCancel";
+            this.btnCancel.Size = new System.Drawing.Size(109, 27);
+            this.btnCancel.TabIndex = 15;
+            this.btnCancel.Text = "Cancel";
+            this.btnCancel.UseVisualStyleBackColor = true;
+            this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
             // 
             // pnlProgress
             // 
@@ -173,7 +186,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoSize = true;
             this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.ClientSize = new System.Drawing.Size(637, 319);
+            this.ClientSize = new System.Drawing.Size(637, 316);
             this.ControlBox = false;
             this.Controls.Add(this.flpLayout);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -182,7 +195,7 @@
             this.ShowIcon = false;
             this.ShowInTaskbar = false;
             this.Text = "Generate Preview Nuget Package";
-            this.Shown += new System.EventHandler(async (s,e) => await this.GenerateForm_ShownAsync(s,e));
+            this.Shown += new System.EventHandler(this.GenerateForm_ShownAsync);
             this.flpLayout.ResumeLayout(false);
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();
@@ -209,5 +222,6 @@
         private System.Windows.Forms.Panel pnlProgress;
         private System.Windows.Forms.ProgressBar prgProgress;
         private System.Windows.Forms.Label lblProgressUpdate;
+        private System.Windows.Forms.Button btnCancel;
     }
 }
