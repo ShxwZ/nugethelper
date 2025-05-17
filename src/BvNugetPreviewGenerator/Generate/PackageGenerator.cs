@@ -86,14 +86,12 @@ namespace BvNugetPreviewGenerator.Generate
                     .ThrowIf(string.IsNullOrWhiteSpace(_ProjectPath),
                         "No project file was specified for this package.");
                 Progress(5, "Initial Checks Complete");
-                Progress(10, "Updating Project Version");
-                UpdateProjectVersion(context);
+                Progress(10, "Get Project Version");
+                GetProjectVersion(context);
                 Progress(15, "Building Project");
                 RunDotNetBuild(context);
                 Progress(75, "Pushing Project to Nuget");
                 RunNugetPush(context);
-                Progress(85, "Restoring Project");
-                //RestoreProjectVersion(context);
                 Progress(95, "Cleaning Up");
                 CleanUp(context);
                 Progress(100, "Generation Complete");
@@ -151,22 +149,12 @@ namespace BvNugetPreviewGenerator.Generate
                 Log($"Error al eliminar el paquete NuGet: {ex.Message}");
             }
         }
-
-
-
-
         public void GeneratePackage()
         {
             PackageGenerateException.ThrowIf(_Worker.IsBusy, "GeneratePackage is Already Running");
             _Worker.RunWorkerAsync();            
         }
 
-        //private void RestoreProjectVersion(PackageGeneratorContext context)
-        //{
-        //    Log($"Restoring original version of {context.ProjectFilename}");
-        //    SaveFile(context.ProjectPath, context.OriginalProjectContent);
-        //    Log($"Restoration Complete");
-        //}
         private string LoadFile(string fileName)
         {
             var reader = new StreamReader(fileName);
@@ -180,24 +168,10 @@ namespace BvNugetPreviewGenerator.Generate
             writer.Write(content);
             writer.Close();
         }
-        //private void UpdateProjectVersion_AddOrEditNode(XmlNode parent, string nodeName, string nodeValue)
-        //{
-        //    var doc = parent.OwnerDocument;
-        //    var dtNode = parent.SelectSingleNode(nodeName);
-        //    if (dtNode != null)
-        //    {
-        //        dtNode.InnerText = nodeValue;
-        //    }
-        //    else
-        //    {
-        //        var newNode = doc.CreateElement(nodeName);
-        //        newNode.InnerText = nodeValue;
-        //        parent.AppendChild(newNode);
-        //    }
-        //}
-        private void UpdateProjectVersion(PackageGeneratorContext context)
+
+        private void GetProjectVersion(PackageGeneratorContext context)
         {
-            Log($"Updating Project Version in {context.ProjectFilename}");
+            Log($"Get Project Version in {context.ProjectFilename}");
             context.OriginalProjectContent = LoadFile(context.ProjectPath);
             var doc = new XmlDocument();
             doc.LoadXml(context.OriginalProjectContent);
@@ -212,17 +186,7 @@ namespace BvNugetPreviewGenerator.Generate
                     "expected format. Project must contain a version number in the format " +
                     "Major.Minor.Patch e.g. 1.5.3 or 1.5.3.4");
 
-            //var dateStr = DateTime.Now.ToString("yyyyMMddHHmm");
-            //version.PreviewSuffix = $"preview{dateStr}";
-            //versionNode.InnerText = version.ToString();
-            //var propGroupNode = doc.SelectSingleNode("/Project/PropertyGroup");
-            //UpdateProjectVersion_AddOrEditNode(propGroupNode,
-            //    "DebugType", "embedded");
-            //UpdateProjectVersion_AddOrEditNode(propGroupNode,
-            //    "GeneratePackageOnBuild", "true");
-            //doc.Save(context.ProjectPath);
             context.VersionNo = version.ToString();
-            Log($"Update Complete");
         }
         private string RunDotNetBuild(PackageGeneratorContext context)
         {
@@ -274,22 +238,32 @@ namespace BvNugetPreviewGenerator.Generate
 
             Log($"Deleted installed Nuget Package {packageFileName}");
         }
-        private string RunTask(PackageGeneratorContext context,string processName, string parameters)
+        private string RunTask(PackageGeneratorContext context, string processName, string parameters)
         {
             try
             {
                 Log($"Attempting to Run: {processName} {parameters}");
                 var procStIfo = new ProcessStartInfo(processName, parameters);
                 procStIfo.RedirectStandardOutput = true;
+                procStIfo.RedirectStandardError = true;
                 procStIfo.UseShellExecute = false;
                 procStIfo.CreateNoWindow = true;
 
                 using (var proc = new Process())
                 {
                     proc.StartInfo = procStIfo;
-                    proc.Start();                    
+                    proc.Start();
+
+                    string output = proc.StandardOutput.ReadToEnd();
+                    string error = proc.StandardError.ReadToEnd();
+
                     proc.WaitForExit();
-                    var output = proc.StandardOutput.ReadToEnd();
+
+                    if (!string.IsNullOrWhiteSpace(error))
+                    {
+                        Log($"dotnet error: {error}");
+                    }
+
                     return output;
                 }
             }
@@ -300,7 +274,6 @@ namespace BvNugetPreviewGenerator.Generate
                 Log($"Stack Trace: {ex.StackTrace}");
                 throw;
             }
-            
         }
         public void Log(string message)
         {

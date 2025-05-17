@@ -129,7 +129,6 @@ namespace BvNugetPreviewGenerator
                 var project = item.Project;
                 if (project != null && !string.IsNullOrEmpty(project.FileName))
                 {
-                    // Solo añade si es un proyecto NuGet válido
                     if (IsNugetProject(project.FileName))
                         projectsPath.Add(project.FileName);
                 }
@@ -147,13 +146,36 @@ namespace BvNugetPreviewGenerator
             var projectsPath = new List<string>();
             foreach (EnvDTE.Project project in projects)
             {
-                if (project == null || string.IsNullOrEmpty(project.FileName))
-                    continue;
-                if (IsNugetProject(project.FileName))
-                    projectsPath.Add(project.FileName);
+                AddProjectAndSubProjects(project, projectsPath);
             }
             return projectsPath;
         }
+
+        private void AddProjectAndSubProjects(Project project, List<string> projectsPath)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            if (project == null)
+                return;
+
+            if (!string.IsNullOrEmpty(project.FileName) && IsNugetProject(project.FileName))
+            {
+                projectsPath.Add(project.FileName);
+            }
+
+            if (project.ProjectItems != null)
+            {
+                foreach (ProjectItem item in project.ProjectItems)
+                {
+                    var subProject = item.SubProject;
+                    if (subProject != null)
+                    {
+                        AddProjectAndSubProjects(subProject, projectsPath);
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// Checks if the project is a NuGet project.
         /// </summary>
