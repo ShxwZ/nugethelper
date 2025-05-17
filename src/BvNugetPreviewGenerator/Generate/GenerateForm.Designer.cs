@@ -182,7 +182,7 @@
             this.ShowIcon = false;
             this.ShowInTaskbar = false;
             this.Text = "Generate Preview Nuget Package";
-            this.Shown += new System.EventHandler(this.GenerateForm_Shown);
+            this.Shown += new System.EventHandler(async (s,e) => await this.GenerateForm_ShownAsync(s,e));
             this.flpLayout.ResumeLayout(false);
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();

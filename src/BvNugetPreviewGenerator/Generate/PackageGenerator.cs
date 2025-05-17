@@ -21,8 +21,9 @@ namespace BvNugetPreviewGenerator.Generate
         public event Action<int, string> ProgressEvent;
         public event Action<PackageGenerateResult> CompleteEvent;
 
-        private string _NugetPath;
+        private string _LocalRepoPath;
         private string _ProjectPath;
+        private string _BuildConfiguration;
         private int _Progress;
         private BackgroundWorker _Worker;
         private PackageGenerateResult _Result;
@@ -58,7 +59,7 @@ namespace BvNugetPreviewGenerator.Generate
         private void Worker_DoWork(object sender, DoWorkEventArgs e)
         {
             var context = new PackageGeneratorContext();
-            context.NugetPath = _NugetPath;
+            context.NugetPath = _LocalRepoPath;
             context.ProjectPath = _ProjectPath;
             context.ProjectFilename = Path.GetFileName(_ProjectPath);
             context.TempPath = Path.GetTempPath();
@@ -72,12 +73,12 @@ namespace BvNugetPreviewGenerator.Generate
 
                 Progress(0, "Performing Initial Checks");
                 PackageGenerateException
-                    .ThrowIf(string.IsNullOrWhiteSpace(_NugetPath),
+                    .ThrowIf(string.IsNullOrWhiteSpace(_LocalRepoPath),
                         "No NuGet repository folder has been specified, please configure a folder " +
                         "Local Nuget Repository Folder in Nuget Package Manager > Nuget Preview Generator.");
 
                 PackageGenerateException
-                    .ThrowIf(!Directory.Exists(_NugetPath),
+                    .ThrowIf(!Directory.Exists(_LocalRepoPath),
                         "The configured Local Nuget Repository Folder does not exist, please check the " +
                         "configured folder in Nuget Package Manager > Nuget Preview Generator is correct.");
 
@@ -92,7 +93,7 @@ namespace BvNugetPreviewGenerator.Generate
                 Progress(75, "Pushing Project to Nuget");
                 RunNugetPush(context);
                 Progress(85, "Restoring Project");
-                RestoreProjectVersion(context);
+                //RestoreProjectVersion(context);
                 Progress(95, "Cleaning Up");
                 CleanUp(context);
                 Progress(100, "Generation Complete");
@@ -108,20 +109,64 @@ namespace BvNugetPreviewGenerator.Generate
             }            
         }
 
-        public void GeneratePackage(string projectPath, string nugetPath)
+        public void DeleteInstalledNugetPackage(string packageId, string version, string customPackagesPath = null)
+        {
+            try
+            {
+                string versionFolder = null;
+
+                
+                if (!string.IsNullOrEmpty(customPackagesPath))
+                {
+                    // TODO: In the future, we should check if the customPackagesPath is a valid path
+                    string localPackagesPath = Path.Combine(customPackagesPath, packageId);
+                    if (Directory.Exists(localPackagesPath))
+                    {
+                        versionFolder = localPackagesPath;
+                    }
+                } 
+                else
+                {
+                    string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                    string globalPackagesPath = Path.Combine(userProfile, ".nuget", "packages", packageId.ToLowerInvariant(), version);
+                    string projectPackagesPath = Path.Combine(userProfile, ".nuget", "packages", packageId.ToLowerInvariant(), version);
+                    if (Directory.Exists(globalPackagesPath))
+                    {
+                        versionFolder = globalPackagesPath;
+                    }
+                }
+
+                if (versionFolder != null)
+                {
+                    Directory.Delete(versionFolder, true);
+                    Log($"Eliminada la carpeta del paquete: {versionFolder}");
+                }
+                else
+                {
+                    Log($"No se encontró el paquete {packageId} {version} ni en caché global ni en carpeta local.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Error al eliminar el paquete NuGet: {ex.Message}");
+            }
+        }
+
+
+
+
+        public void GeneratePackage()
         {
             PackageGenerateException.ThrowIf(_Worker.IsBusy, "GeneratePackage is Already Running");
-            this._ProjectPath = projectPath;
-            this._NugetPath = nugetPath;
             _Worker.RunWorkerAsync();            
         }
 
-        private void RestoreProjectVersion(PackageGeneratorContext context)
-        {
-            Log($"Restoring original version of {context.ProjectFilename}");
-            SaveFile(context.ProjectPath, context.OriginalProjectContent);
-            Log($"Restoration Complete");
-        }
+        //private void RestoreProjectVersion(PackageGeneratorContext context)
+        //{
+        //    Log($"Restoring original version of {context.ProjectFilename}");
+        //    SaveFile(context.ProjectPath, context.OriginalProjectContent);
+        //    Log($"Restoration Complete");
+        //}
         private string LoadFile(string fileName)
         {
             var reader = new StreamReader(fileName);
@@ -135,21 +180,21 @@ namespace BvNugetPreviewGenerator.Generate
             writer.Write(content);
             writer.Close();
         }
-        private void UpdateProjectVersion_AddOrEditNode(XmlNode parent, string nodeName, string nodeValue)
-        {
-            var doc = parent.OwnerDocument;
-            var dtNode = parent.SelectSingleNode(nodeName);
-            if (dtNode != null)
-            {
-                dtNode.InnerText = nodeValue;
-            }
-            else
-            {
-                var newNode = doc.CreateElement(nodeName);
-                newNode.InnerText = nodeValue;
-                parent.AppendChild(newNode);
-            }
-        }
+        //private void UpdateProjectVersion_AddOrEditNode(XmlNode parent, string nodeName, string nodeValue)
+        //{
+        //    var doc = parent.OwnerDocument;
+        //    var dtNode = parent.SelectSingleNode(nodeName);
+        //    if (dtNode != null)
+        //    {
+        //        dtNode.InnerText = nodeValue;
+        //    }
+        //    else
+        //    {
+        //        var newNode = doc.CreateElement(nodeName);
+        //        newNode.InnerText = nodeValue;
+        //        parent.AppendChild(newNode);
+        //    }
+        //}
         private void UpdateProjectVersion(PackageGeneratorContext context)
         {
             Log($"Updating Project Version in {context.ProjectFilename}");
@@ -160,22 +205,22 @@ namespace BvNugetPreviewGenerator.Generate
             PackageGenerateException
                 .ThrowIf(versionNode == null, 
                 "No version number found, project must contain a version number in the " +
-                "format Major.Minor.Patch e.g. 1.5.3");
+                "format Major.Minor.Patch e.g. 1.5.3 or 1.5.3.4");
 
             if (!PackageVersion.TryParse(versionNode.InnerText, out var version))
                 throw new PackageGenerateException("Version number did not match " +
                     "expected format. Project must contain a version number in the format " +
-                    "Major.Minor.Patch e.g. 1.5.3");
+                    "Major.Minor.Patch e.g. 1.5.3 or 1.5.3.4");
 
-            var dateStr = DateTime.Now.ToString("yyyyMMddHHmm");
-            version.PreviewSuffix = $"preview{dateStr}";
-            versionNode.InnerText = version.ToString();
-            var propGroupNode = doc.SelectSingleNode("/Project/PropertyGroup");
-            UpdateProjectVersion_AddOrEditNode(propGroupNode,
-                "DebugType", "embedded");
-            UpdateProjectVersion_AddOrEditNode(propGroupNode,
-                "GeneratePackageOnBuild", "true");
-            doc.Save(context.ProjectPath);
+            //var dateStr = DateTime.Now.ToString("yyyyMMddHHmm");
+            //version.PreviewSuffix = $"preview{dateStr}";
+            //versionNode.InnerText = version.ToString();
+            //var propGroupNode = doc.SelectSingleNode("/Project/PropertyGroup");
+            //UpdateProjectVersion_AddOrEditNode(propGroupNode,
+            //    "DebugType", "embedded");
+            //UpdateProjectVersion_AddOrEditNode(propGroupNode,
+            //    "GeneratePackageOnBuild", "true");
+            //doc.Save(context.ProjectPath);
             context.VersionNo = version.ToString();
             Log($"Update Complete");
         }
@@ -188,9 +233,9 @@ namespace BvNugetPreviewGenerator.Generate
 
             var output = RunTask(context, "dotnet", 
                 $"build \"{projectPath}\" " +
-                $"--configuration Debug " +
+                $"--configuration \"{this._BuildConfiguration}\" " +
                 $"-o:\"{outputFolder}\"");
-            Log($"DotNet Build Complete");
+            Log($"DotNet Build Complete: {output}");
             return output;
         }
         private string RunNugetPush(PackageGeneratorContext context)
@@ -224,6 +269,10 @@ namespace BvNugetPreviewGenerator.Generate
             if (File.Exists(fullProjName))
                 File.Delete(fullProjName);
             Log("Cleanup Complete");
+
+            DeleteInstalledNugetPackage(context.ProjectFilename.Replace(".csproj",""), context.VersionNo);
+
+            Log($"Deleted installed Nuget Package {packageFileName}");
         }
         private string RunTask(PackageGeneratorContext context,string processName, string parameters)
         {
@@ -261,6 +310,37 @@ namespace BvNugetPreviewGenerator.Generate
         {
             _Progress = progress;
             _Worker.ReportProgress(progress, new PackageGenerateProgress(message, true));
+        }
+        private Task<PackageGenerateResult> GeneratePackageInternalAsync()
+        {
+            var tcs = new TaskCompletionSource<PackageGenerateResult>();
+            Action<PackageGenerateResult> handler = null;
+            handler = result =>
+            {
+                CompleteEvent -= handler;
+                tcs.SetResult(result);
+            };
+            CompleteEvent += handler;
+            GeneratePackage();
+            return tcs.Task;
+        }
+
+        public async Task GeneratePackageAsync(IEnumerable<string> projectPaths, string localRepoPath, string buildConfiguration)
+        {
+            int total = projectPaths.Count();
+            int current = 0;
+
+            this._LocalRepoPath = localRepoPath;
+            this._BuildConfiguration = buildConfiguration;
+            Log($"Using build configuration: {this._BuildConfiguration}");
+            foreach (var projectPath in projectPaths)
+            {
+                current++;
+                ProgressEvent?.Invoke((current * 100) / total, $"Procesando {Path.GetFileName(projectPath)} ({current}/{total})");
+                this._ProjectPath = projectPath;
+
+                await GeneratePackageInternalAsync(); 
+            }
         }
     }
 }

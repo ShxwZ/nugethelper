@@ -19,5 +19,11 @@ namespace BvNugetPreviewGenerator.Options
             get;
             set;
         }
+
+        [Category("General")]
+        [DisplayName("Build Configuration")]
+        [Description("Specifies the build configuration to use (e.g., Debug, Release).")]
+        public string BuildConfiguration { get; set; } = "Debug";
+
     }
 }

@@ -35,31 +35,38 @@
          other menus or buttons (commands); from a visual point of view you can see the
          group as the part of a menu contained between two lines. The parent of a group
          must be a menu. -->
-    <Groups>
-      <Group guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ProjMenuGroup" priority="0x0600">
-				<Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_PROJNODE" />
-      </Group>
-    </Groups>
+	  <Groups>
+		  <!-- Grupo para la solución -->
+		  <Group guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="SolnMenuGroup" priority="0x0600">
+			  <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_SOLNNODE" />
+		  </Group>
+		  <!-- Grupo para el proyecto -->
+		  <Group guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ProjMenuGroup" priority="0x0600">
+			  <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_PROJNODE" />
+		  </Group>
+	  </Groups>
 
     <!--Buttons section. -->
     <!--This section defines the elements the user can interact with, like a menu command or a button
         or combo box in a toolbar. -->
-    <Buttons>
-      <!--To define a menu group you have to specify its ID, the parent menu and its display priority.
-          The command is visible and enabled by default. If you need to change the visibility, status, etc, you can use
-          the CommandFlag node.
-          You can add more than one CommandFlag node e.g.:
-              <CommandFlag>DefaultInvisible</CommandFlag>
-              <CommandFlag>DynamicVisibility</CommandFlag>
-          If you do not want an image next to your command, remove the Icon node /> -->
-      <Button guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="GeneratePreviewNugetCommandId" priority="0x0100" type="Button">
-        <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ProjMenuGroup" />
-        <Icon guid="guidImages" id="bmpPic1" />
-        <Strings>
-          <ButtonText>Generate Preview Nuget Package</ButtonText>
-        </Strings>
-      </Button>
-    </Buttons>
+	  <Buttons>
+		  <!-- Botón para la solución -->
+		  <Button guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="GeneratePreviewNugetCommandId" priority="0x0100" type="Button">
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="SolnMenuGroup" />
+			  <Icon guid="guidImages" id="bmpPic1" />
+			  <Strings>
+				  <ButtonText>Generate Preview Nuget Package (Solution)</ButtonText>
+			  </Strings>
+		  </Button>
+		  <!-- Botón para el proyecto -->
+		  <Button guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="GeneratePreviewNugetProjectCommandId" priority="0x0101" type="Button">
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ProjMenuGroup" />
+			  <Icon guid="guidImages" id="bmpPic1" />
+			  <Strings>
+				  <ButtonText>Generate Preview Nuget Package (Project)</ButtonText>
+			  </Strings>
+		  </Button>
+	  </Buttons>
 
     <!--The bitmaps section is used to define the bitmaps that are used for the commands.-->
     <Bitmaps>
@@ -77,10 +84,12 @@
     <GuidSymbol name="guidBvNugetPreviewGeneratorPackage" value="{294208b7-7166-4acc-a252-b59af677ca11}" />
 
     <!-- This is the guid used to group the menu commands together -->
-    <GuidSymbol name="guidBvNugetPreviewGeneratorPackageCmdSet" value="{be00d81f-7240-4b92-aba6-995490d5063b}">
-      <IDSymbol name="ProjMenuGroup" value="0x1020" />
-      <IDSymbol name="GeneratePreviewNugetCommandId" value="0x0100" />
-    </GuidSymbol>
+	  <GuidSymbol name="guidBvNugetPreviewGeneratorPackageCmdSet" value="{be00d81f-7240-4b92-aba6-995490d5063b}">
+		  <IDSymbol name="SolnMenuGroup" value="0x1021" />
+		  <IDSymbol name="ProjMenuGroup" value="0x1020" />
+		  <IDSymbol name="GeneratePreviewNugetCommandId" value="0x0100" />
+		  <IDSymbol name="GeneratePreviewNugetProjectCommandId" value="0x0101" />
+	  </GuidSymbol>
 
     <GuidSymbol name="guidImages" value="{9eada567-6a16-4cfc-a35e-7650a9b700fd}" >
       <IDSymbol name="bmpPic1" value="1" />

@@ -11,6 +11,6 @@ namespace BvNugetPreviewGenerator.Generate
         event Action<string> LogEvent;
         event Action<int, string> ProgressEvent;
         event Action<PackageGenerateResult> CompleteEvent;
-        void GeneratePackage(string projectPath, string nugetPath);
+        Task GeneratePackageAsync(IEnumerable<string> projectPaths, string localRepoPath, string buildConfiguration);
     }
 }

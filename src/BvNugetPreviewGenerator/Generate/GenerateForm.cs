@@ -1,21 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace BvNugetPreviewGenerator.Generate
 {
     public partial class GenerateForm: Form
     {
 
-        public string ProjectPath { get; set; }
-        public string NugetPath { get; set; }
+        public IEnumerable<string> ProjectPaths { get; set; }
+        public string LocalRepoPath { get; set; }
+        public string BuildConfiguration { get; set; }
 
         private IPackageGenerator _Generator;
         private PackageGenerateResult _PreviewPackageGenerateResult;
@@ -84,10 +80,10 @@ namespace BvNugetPreviewGenerator.Generate
             Close();
         }
 
-        private void GenerateForm_Shown(object sender, EventArgs e)
+        private async Task GenerateForm_ShownAsync(object sender, EventArgs e)
         {
-            StartProgress();            
-            _Generator.GeneratePackage(ProjectPath, NugetPath);
+            StartProgress();
+            await _Generator.GeneratePackageAsync(ProjectPaths, LocalRepoPath, BuildConfiguration);
         }
 
         private void Generator_CompleteEvent(PackageGenerateResult obj)

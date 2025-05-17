@@ -45,6 +45,15 @@ namespace BvNugetPreviewGenerator
             }
         }
 
+        public string BuildConfiguration
+        {
+            get
+            {
+                PreviewGeneratorOptions page = (PreviewGeneratorOptions)GetDialogPage(typeof(PreviewGeneratorOptions));
+                return page.BuildConfiguration;
+            }
+        }
+
         #endregion
 
         #region Package Members
