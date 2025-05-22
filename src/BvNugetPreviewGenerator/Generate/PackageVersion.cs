@@ -15,7 +15,7 @@ public class PackageVersion
     public int Major { get; set; }
     public int Minor { get; set; }
     public int Patch { get; set; }
-    public int Revision { get; set; } // Nuevo campo opcional
+    public int Revision { get; set; }
     public string PreviewSuffix { get; set; }
 
     private static bool TrySet(string input, PackageVersion version)
@@ -23,7 +23,6 @@ public class PackageVersion
         version.Revision = 0; // Valor por defecto
         version.PreviewSuffix = string.Empty;
 
-        // Separar el sufijo si existe (por ejemplo, 1.2.3.4-beta)
         string[] mainAndSuffix = input.Split('-');
         string mainPart = mainAndSuffix[0];
         if (mainAndSuffix.Length > 1)

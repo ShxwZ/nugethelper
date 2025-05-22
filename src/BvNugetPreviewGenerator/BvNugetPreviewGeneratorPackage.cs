@@ -54,6 +54,15 @@ namespace BvNugetPreviewGenerator
             }
         }
 
+        public bool Parallel
+        {
+            get
+            {
+                PreviewGeneratorOptions page = (PreviewGeneratorOptions)GetDialogPage(typeof(PreviewGeneratorOptions));
+                return page.Parallel;
+            }
+        }
+
         #endregion
 
         #region Package Members

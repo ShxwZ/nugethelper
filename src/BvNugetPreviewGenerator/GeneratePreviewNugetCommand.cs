@@ -218,6 +218,7 @@ namespace BvNugetPreviewGenerator
                 form.BuildConfiguration = bvPreviewPackage.BuildConfiguration;
                 form.LocalRepoPath = bvPreviewPackage.DestinationNugetPreviewSource;
                 form.ProjectPaths = projectsPath;
+                form.Parallel = bvPreviewPackage.Parallel;
                 form.ShowDialog();
             }
         }

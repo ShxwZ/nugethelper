@@ -25,5 +25,10 @@ namespace BvNugetPreviewGenerator.Options
         [Description("Specifies the build configuration to use (e.g., Debug, Release).")]
         public string BuildConfiguration { get; set; } = "Debug";
 
+        [Category("General")]
+        [DisplayName("Run parallel")]
+        [Description("Run the package generation in parallel.")]
+        public bool Parallel { get; set; } = true;
+
     }
 }

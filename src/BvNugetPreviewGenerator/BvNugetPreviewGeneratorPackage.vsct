@@ -55,7 +55,7 @@
 			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="SolnMenuGroup" />
 			  <Icon guid="guidImages" id="bmpPic1" />
 			  <Strings>
-				  <ButtonText>Generate Preview Nuget Package (Solution)</ButtonText>
+				  <ButtonText>Generate Nuget Packages (Solution)</ButtonText>
 			  </Strings>
 		  </Button>
 		  <!-- Botón para el proyecto -->
@@ -63,7 +63,7 @@
 			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ProjMenuGroup" />
 			  <Icon guid="guidImages" id="bmpPic1" />
 			  <Strings>
-				  <ButtonText>Generate Preview Nuget Package (Project)</ButtonText>
+				  <ButtonText>Generate Nuget Package (Project)</ButtonText>
 			  </Strings>
 		  </Button>
 	  </Buttons>
