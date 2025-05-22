@@ -88,6 +88,7 @@
     <Content Include="Resources\icon.png" />
     <Content Include="Resources\preview.png" />
     <EmbeddedResource Include="Resources\windowicon32.png" />
+    <None Include="README.MD" />
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
     </None>

@@ -306,7 +306,13 @@ namespace BvNugetPreviewGenerator.Generate
             }
         }
 
-        public Task GeneratePackageAsync(IEnumerable<string> projectPaths, string localRepoPath, string buildConfiguration, bool parallel = true)
+        public Task GeneratePackageAsync(
+            IEnumerable<string> projectPaths,
+            string localRepoPath,
+            string buildConfiguration,
+            bool parallel = true,
+            int maxDegreeOfParallelism = 4
+        )
         {
             int total = projectPaths.Count();
             int success = 0;
@@ -315,23 +321,29 @@ namespace BvNugetPreviewGenerator.Generate
 
             if (parallel)
             {
-                var tasks = projectPaths.Select(projectPath =>
-                    GeneratePackageAsync(projectPath, localRepoPath, buildConfiguration)
-                        .ContinueWith(t =>
+                var semaphore = new System.Threading.SemaphoreSlim(maxDegreeOfParallelism);
+                var tasks = projectPaths.Select(async projectPath =>
+                {
+                    await semaphore.WaitAsync();
+                    try
+                    {
+                        var result = await GeneratePackageAsync(projectPath, localRepoPath, buildConfiguration);
+                        if (result != null && result.ResultType == PreviewPackageGenerateResultType.Success)
                         {
-                            var result = t.Result;
-                            if (result != null && result.ResultType == PreviewPackageGenerateResultType.Success)
-                            {
-                                int done = System.Threading.Interlocked.Increment(ref success);
-                                PackagesLeft?.Invoke($"Success {done}/{total} - Failed {failed}/{total}");
-                            }
-                            else
-                            {
-                                int fail = System.Threading.Interlocked.Increment(ref failed);
-                                PackagesLeft?.Invoke($"Success {success}/{total} - Failed {fail}/{total}");
-                            }
-                        }, TaskScheduler.Default)
-                );
+                            int done = System.Threading.Interlocked.Increment(ref success);
+                            PackagesLeft?.Invoke($"Success {done}/{total} - Failed {failed}/{total}");
+                        }
+                        else
+                        {
+                            int fail = System.Threading.Interlocked.Increment(ref failed);
+                            PackagesLeft?.Invoke($"Success {success}/{total} - Failed {fail}/{total}");
+                        }
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
                 return Task.WhenAll(tasks);
             }
             else

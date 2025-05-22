@@ -13,6 +13,7 @@ namespace BvNugetPreviewGenerator.Generate
         public string LocalRepoPath { get; set; }
         public string BuildConfiguration { get; set; }
         public bool Parallel { get; set; }
+        public int MaxDegreeOfParallelism { get; set; }
 
         private IPackageGenerator _Generator;
         private PackageGenerateResult _PreviewPackageGenerateResult;
@@ -82,7 +83,7 @@ namespace BvNugetPreviewGenerator.Generate
         private async void GenerateForm_ShownAsync(object sender, EventArgs e)
         {
             StartProgress();
-            await _Generator.GeneratePackageAsync(ProjectPaths, LocalRepoPath, BuildConfiguration, Parallel);
+            await _Generator.GeneratePackageAsync(ProjectPaths, LocalRepoPath, BuildConfiguration, Parallel, MaxDegreeOfParallelism);
 
             btnOk.Enabled = true;
         }

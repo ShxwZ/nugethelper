@@ -12,7 +12,8 @@ namespace BvNugetPreviewGenerator.Generate
         event Action<int, string> ProgressEvent;
         event Action<PackageGenerateResult> CompleteEvent;
         event Action<string> PackagesLeft;
-        Task GeneratePackageAsync(IEnumerable<string> projectPaths, string localRepoPath, string buildConfiguration, bool parallel = true);
+        Task GeneratePackageAsync(IEnumerable<string> projectPaths, string localRepoPath, string buildConfiguration, bool parallel = true,
+            int maxDegreeOfParallelism = 4);
         void Cancel();
     }
 }

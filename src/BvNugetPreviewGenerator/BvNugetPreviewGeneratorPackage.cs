@@ -63,6 +63,15 @@ namespace BvNugetPreviewGenerator
             }
         }
 
+        public int MaxDegreeOfParallelism
+        {
+            get
+            {
+                PreviewGeneratorOptions page = (PreviewGeneratorOptions)GetDialogPage(typeof(PreviewGeneratorOptions));
+                return page.MaxDegreeOfParallelism;
+            }
+        }
+
         #endregion
 
         #region Package Members

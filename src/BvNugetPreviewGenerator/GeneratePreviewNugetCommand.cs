@@ -219,6 +219,7 @@ namespace BvNugetPreviewGenerator
                 form.LocalRepoPath = bvPreviewPackage.DestinationNugetPreviewSource;
                 form.ProjectPaths = projectsPath;
                 form.Parallel = bvPreviewPackage.Parallel;
+                form.MaxDegreeOfParallelism = bvPreviewPackage.MaxDegreeOfParallelism;
                 form.ShowDialog();
             }
         }

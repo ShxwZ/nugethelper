@@ -30,5 +30,10 @@ namespace BvNugetPreviewGenerator.Options
         [Description("Run the package generation in parallel.")]
         public bool Parallel { get; set; } = true;
 
+        [Category("General")]
+        [DisplayName("Maximum Degree of Parallelism")]
+        [Description("Maximum number of parallel tasks to run.")]
+        public int MaxDegreeOfParallelism { get; set; } = 4;
+
     }
 }
