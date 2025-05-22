@@ -1,46 +1,106 @@
-# Nuget Preview Generator Utility
+# Nuget ~Preview~ Generator Utility
 
-A utility to help users quickly and easily generate preview NuGet packages and place
-them in a local repository to allow easier debugging when the need arises to make changes
-to a NuGet package as part of a change to another project.
+A utility to help users quickly and easily generate preview NuGet packages and place them in a local repository. This allows for easier debugging when changes need to be made to a NuGet package as part of development in another project.
 
-## The Problem
+---
 
-In many situations writing code, you'll find a generic code repository, let's imagine a hypothetical **Company X** which has a repository *Company X Generic Code Package Y* which we'll call *Package Y*. This project contains code that's reasonably generic and designed for use across a number of different projects within Company X. 
+## 🔧 About This Version
 
-Now lets imagine that as part of their work on *Project Z* a developer needs to make changes to *Package Y*. The usual way would be:
+This is a customized version of **Nuget Preview Generator**, adapted with the following features:
 
-- Make the change to *Package Y*
-- Publish a new version of *Package Y* 
-- Consume the new version in *Project Z*
- 
-If the change required is simple then this is all well and good, but there are often situations where this could be quite time consuming. Sometimes the interdependencies between the packages might be quite complex. You may publish *Package Y* only to find that you're missing some vital code and you need to make further changes to *Package Y*, the overall result is that you may end up flooding your company's nuget feed with unnecessary packages and waste serious amounts of time publishing your changes.
+- ✅ Added configuration option to select build mode.
+- ✅ Added error handling to display errors in the log.
+- ✅ Added cancel button to allow stopping the process.
+- ✅ Added option to enable or disable parallel execution.
+- ✅ Added option to build all projects in the solution or individual projects.
+- ✅ Support for versions with "Revision" (e.g., `1.2.3.4-test`).
+- ✅ Automatically removes previously installed versions of the generated package from the default `/.nuget/packages` folder.
+- ❌ Removed feature that modifies the NuGet version — the package is now generated using the version already set.
 
-## The Solution
+> This version is intended to provide more flexibility and control for advanced users and teams working with complex solutions.
 
-*Nuget Preview Generator* is designed so that a click on a Project in the Solution Explorer will create a preview build of the assembly in question and deploy it to a local NuGet repository on your machine. This preview package will include the debug symbols and since it's built on the same machine it will allow you to step into the code and make sure it's behaving as expected. The aim is to make working with interdependent NuGet packages faster and easier.
+---
 
-## Setup
+## 🧩 The Problem
 
-In order to use the preview generator you'll need to create a local Nuget Repository, this is far easier than it sounds, it's simply a folder on your computer somewhere for putting *.nupkg* files. 
+When developing projects that depend on internal shared NuGet packages, it can be time-consuming to test changes. Developers often need to:
 
-To add a new source:
-1. Create a folder on the file system to be your NuGet repository 
-2. In Visual Studio go to **Tools** &gt; **Options** to open the options pages. From the list of options choose **Nuget Package Manager** &gt; **Package Sources** and add your new folder through the UI
+1. Modify the shared package.
+2. Build and generate a new version.
+3. Publish the updated package to a local or remote feed.
+4. Manually remove the existing version from the NuGet global packages folder (`/.nuget/packages`) to restore the new version.
 
-Once you've added your new source, the next stage is to configure the *Nuget Preview Generator* to use that source, to do this:
+This process is not only repetitive but error-prone — forgetting to clear out an old version can lead to unexpected behavior during testing.
 
-1. Go to **Tools** &gt; **Options** pages. Choose **Nuget Package Manager** &gt; **Nuget Preview Generator** to open the Preview Generator options page.
-2. On the options page, change the **Local Nuget Repository Folder** to your newly created folder.
+---
 
-## Generating the Preview
+## ✅ The Solution
 
-Once you've configured Preview Generator, it's simply a case of choosing a Project, right clicking that project to bring up the menu and clicking **Generate Preview Nuget Package** the only prerequisite being that the Project in question has a configured version number. You can add this by adding a **Version** on the project XML like so.
+**Nuget Preview Generator** streamlines this process by letting you:
 
-~~~
+- Right-click a project in Solution Explorer.
+- Generate a **build** of the assembly.
+- Deploy it to a **local NuGet repository** on your machine.
+- 🔄 Automatically clean out any existing versions of the package from the NuGet global packages cache.
+
+This preview package includes debug symbols and allows you to step into the code during debugging — making development with interdependent NuGet packages faster and easier.
+
+---
+
+## 🚀 Setup
+
+To use the preview generator, you need a local NuGet repository. Don’t worry — it’s just a folder.
+
+### Add a Local NuGet Source
+
+1. Create a folder on your file system (e.g., `C:\LocalNugets`).
+2. In **Visual Studio**, go to:
+   - `Tools > Options > NuGet Package Manager > Package Sources`
+   - Add your folder as a new source.
+
+### Configure NuGet Preview Generator
+
+1. In **Visual Studio**, go to:
+   - `Tools > Options > NuGet Package Manager > Nuget Preview Generator`
+2. Set the **Local Nuget Repository Folder** to the path you created earlier.
+
+---
+
+## 📦 Generating the Preview
+
+Once setup is complete:
+
+1. Right-click a project in Solution Explorer.
+2. Select **Generate Preview Nuget Package**.
+
+> 🔐 Make sure the project has a version defined in the `.csproj` file:
+
+```xml
 <PropertyGroup>
-	<TargetFramework>netstandard2.1</TargetFramework>
-	<Nullable>enable</Nullable>
-	<Version>1.0.1</Version>
+  <Version>1.0.1</Version>
+  <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+  <TargetFramework>net6.0</TargetFramework>
 </PropertyGroup>
-~~~
+```
+
+---
+
+## ⚠️ Deprecated/Modified Features
+
+- ~~Automatic version modification during package generation.~~  
+  ✅ Now, the package uses the version already defined in the project.
+
+---
+
+## 🙏 Acknowledgements
+
+This tool is a customized fork of the original project by **voidsoft**, available here:  
+🔗 [voidsoft/nugethelper](https://github.com/voidsoft/nugethelper)
+
+Thanks to the original author for providing the foundation and inspiration for this improved version.
+
+---
+
+## ❓ Need Help?
+
+If you have questions or require further customization, feel free to reach out.
