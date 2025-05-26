@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.Globalization;
+using System.IO;
 using System.Reflection.Emit;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,6 +26,7 @@ namespace BvNugetPreviewGenerator
         /// </summary>
         public const int CommandIdSolution = 0x0100;
         public const int CommandIdProject = 0x0101;
+        public const int CommandIdAsSolution = 0x0102;
 
         /// <summary>
         /// Command menu group (command set GUID).
@@ -56,6 +58,11 @@ namespace BvNugetPreviewGenerator
             var menuCommandIDProject = new CommandID(CommandSet, CommandIdProject);
             var menuItemProject = new MenuCommand(this.ExecuteProject, menuCommandIDProject);
             commandService.AddCommand(menuItemProject);
+
+            // Comando como solucion
+            var menuCommandIDAsSolution = new CommandID(CommandSet, CommandIdAsSolution);
+            var menuItemAsSolution = new MenuCommand(this.ExecuteAsSolution, menuCommandIDAsSolution);
+            commandService.AddCommand(menuItemAsSolution);
         }
 
         /// <summary>
@@ -111,6 +118,20 @@ namespace BvNugetPreviewGenerator
             // Procesa todos los proyectos de la solución
             var projectsPath = GetNugetProjectPaths(solution.Projects);
             ShowGenerateFormForProjects(projectsPath);
+        }
+
+        private void ExecuteAsSolution(object sender, EventArgs e)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            EnvDTE.DTE dte = (EnvDTE.DTE)ServiceProvider.GetService(typeof(EnvDTE.DTE));
+            var solution = dte?.Solution;
+            if (solution == null || solution.Projects == null)
+            {
+                MessageBox.Show("Indeterminated solution", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            ShowGenerateFormAsSolution();
         }
         /// <summary>
         /// Executes the command for the project.
@@ -218,6 +239,32 @@ namespace BvNugetPreviewGenerator
                 form.BuildConfiguration = bvPreviewPackage.BuildConfiguration;
                 form.LocalRepoPath = bvPreviewPackage.DestinationNugetPreviewSource;
                 form.ProjectPaths = projectsPath;
+                form.Parallel = bvPreviewPackage.Parallel;
+                form.MaxDegreeOfParallelism = bvPreviewPackage.MaxDegreeOfParallelism;
+                form.ShowDialog();
+            }
+        }
+
+        private void ShowGenerateFormAsSolution()
+        {
+            var bvPreviewPackage = this.package as BvNugetPreviewGeneratorPackage;
+            var generator = new PackageGenerator();
+
+            EnvDTE.DTE dte = (EnvDTE.DTE)ServiceProvider.GetService(typeof(EnvDTE.DTE));
+            string solutionPath = dte?.Solution?.FullName;
+
+            if (string.IsNullOrEmpty(solutionPath) || !File.Exists(solutionPath))
+            {
+                MessageBox.Show("No se ha encontrado la solución activa.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            using (var form = new GenerateForm(generator))
+            {
+                form.AsSolution = true;
+                form.SolutionPath = solutionPath;
+                form.BuildConfiguration = bvPreviewPackage.BuildConfiguration;
+                form.LocalRepoPath = bvPreviewPackage.DestinationNugetPreviewSource;
                 form.Parallel = bvPreviewPackage.Parallel;
                 form.MaxDegreeOfParallelism = bvPreviewPackage.MaxDegreeOfParallelism;
                 form.ShowDialog();

@@ -40,6 +40,10 @@
 		  <Group guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="SolnMenuGroup" priority="0x0600">
 			  <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_SOLNNODE" />
 		  </Group>
+		  <!-- Grupo para la solución -->
+		  <Group guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="AsSolnMenuGroup" priority="0x0600">
+			  <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_SOLNNODE" />
+		  </Group>
 		  <!-- Grupo para el proyecto -->
 		  <Group guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ProjMenuGroup" priority="0x0600">
 			  <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_PROJNODE" />
@@ -55,7 +59,15 @@
 			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="SolnMenuGroup" />
 			  <Icon guid="guidImages" id="bmpPic1" />
 			  <Strings>
-				  <ButtonText>Generate Nuget Packages (Solution)</ButtonText>
+				  <ButtonText>Generate Nuget Packages (Project by project)</ButtonText>
+			  </Strings>
+		  </Button>
+		  <!-- Botón para la solución -->
+		  <Button guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="GeneratePreviewNugetCommandId2" priority="0x0102" type="Button">
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="AsSolnMenuGroup" />
+			  <Icon guid="guidImages" id="bmpPic1" />
+			  <Strings>
+				  <ButtonText>Generate Nuget Packages (All solution)</ButtonText>
 			  </Strings>
 		  </Button>
 		  <!-- Botón para el proyecto -->
@@ -86,9 +98,11 @@
     <!-- This is the guid used to group the menu commands together -->
 	  <GuidSymbol name="guidBvNugetPreviewGeneratorPackageCmdSet" value="{be00d81f-7240-4b92-aba6-995490d5063b}">
 		  <IDSymbol name="SolnMenuGroup" value="0x1021" />
+		  <IDSymbol name="AsSolnMenuGroup" value="0x1022" />
 		  <IDSymbol name="ProjMenuGroup" value="0x1020" />
 		  <IDSymbol name="GeneratePreviewNugetCommandId" value="0x0100" />
 		  <IDSymbol name="GeneratePreviewNugetProjectCommandId" value="0x0101" />
+		  <IDSymbol name="GeneratePreviewNugetCommandId2" value="0x0102" />
 	  </GuidSymbol>
 
     <GuidSymbol name="guidImages" value="{9eada567-6a16-4cfc-a35e-7650a9b700fd}" >

@@ -11,8 +11,10 @@ namespace BvNugetPreviewGenerator.Generate
 
         public IEnumerable<string> ProjectPaths { get; set; }
         public string LocalRepoPath { get; set; }
+        public string SolutionPath { get; set; }
         public string BuildConfiguration { get; set; }
         public bool Parallel { get; set; }
+        public bool AsSolution { get; set; } = false;
         public int MaxDegreeOfParallelism { get; set; }
 
         private IPackageGenerator _Generator;
@@ -28,12 +30,18 @@ namespace BvNugetPreviewGenerator.Generate
             generator.PackagesLeft += Generator_LogPackagesLeft;
         }
 
-        
+
         private void SetResult(PackageGenerateResult result)
         {
+            if (InvokeRequired)
+            {
+                Invoke(new Action<PackageGenerateResult>(SetResult), result);
+                return;
+            }
             _PreviewPackageGenerateResult = result;
             SetControls();
         }
+
 
         private void StartProgress()
         {
@@ -45,6 +53,11 @@ namespace BvNugetPreviewGenerator.Generate
 
         public void SetControls()
         {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(SetControls));
+                return;
+            }
             var result = _PreviewPackageGenerateResult;
             if (result == null)
             {
@@ -55,7 +68,6 @@ namespace BvNugetPreviewGenerator.Generate
                 return;
             }
 
-
             if (result.ResultType == PreviewPackageGenerateResultType.Success)
             {
                 lblHeading.Text = "Nuget Package Created Successfully";
@@ -64,7 +76,6 @@ namespace BvNugetPreviewGenerator.Generate
             {
                 lblHeading.Text = "Unable to Create Nuget Package";
                 picMainIcon.Image = SystemIcons.Warning.ToBitmap();
-              
             }
             else
             {
@@ -73,6 +84,7 @@ namespace BvNugetPreviewGenerator.Generate
             }
 
             lblMainText.Text = result.Message;
+            btnOk.Enabled = true;
         }
 
         private void btnOk_Click(object sender, EventArgs e)
@@ -83,9 +95,15 @@ namespace BvNugetPreviewGenerator.Generate
         private async void GenerateForm_ShownAsync(object sender, EventArgs e)
         {
             StartProgress();
-            await _Generator.GeneratePackageAsync(ProjectPaths, LocalRepoPath, BuildConfiguration, Parallel, MaxDegreeOfParallelism);
-
-            btnOk.Enabled = true;
+            if(AsSolution)
+            {
+                await _Generator.BuildSolutionAndCopyNupkgsAsync(SolutionPath, BuildConfiguration, LocalRepoPath);
+            }
+            else
+            {
+                await _Generator.GeneratePackageAsync(ProjectPaths, LocalRepoPath, BuildConfiguration, Parallel, MaxDegreeOfParallelism);
+            }
+            
         }
 
         private void Generator_CompleteEvent(PackageGenerateResult obj)

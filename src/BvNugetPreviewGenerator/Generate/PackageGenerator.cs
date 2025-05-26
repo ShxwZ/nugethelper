@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 
@@ -16,23 +15,22 @@ namespace BvNugetPreviewGenerator.Generate
         public event Action<int, string> ProgressEvent;
         public event Action<PackageGenerateResult> CompleteEvent;
         public event Action<string> PackagesLeft;
-
+        private int ParallelBuild = 1;
         private readonly List<BackgroundWorker> _activeWorkers = new List<BackgroundWorker>();
         private readonly object _lock = new object();
 
         public PackageGenerator() { }
 
         public Task<PackageGenerateResult> GeneratePackageAsync(
-            string projectPath,
-            string localRepoPath,
-            string buildConfiguration)
+             string projectPath,
+             string localRepoPath,
+             string buildConfiguration)
         {
             var tcs = new TaskCompletionSource<PackageGenerateResult>();
             var worker = new BackgroundWorker();
             worker.WorkerReportsProgress = true;
             worker.WorkerSupportsCancellation = true;
 
-            // Añadir el worker a la lista de activos
             lock (_lock)
             {
                 _activeWorkers.Add(worker);
@@ -42,12 +40,16 @@ namespace BvNugetPreviewGenerator.Generate
 
             worker.DoWork += (sender, e) =>
             {
+                var projectName = Path.GetFileNameWithoutExtension(projectPath);
+                var tempRoot = Path.Combine(Path.GetTempPath(), $"{projectName}nuget");
+                Directory.CreateDirectory(tempRoot);
+
                 var context = new PackageGeneratorContext
                 {
                     NugetPath = localRepoPath,
                     ProjectPath = projectPath,
                     ProjectFilename = Path.GetFileName(projectPath),
-                    TempPath = Path.GetTempPath()
+                    TempPath = tempRoot
                 };
 
                 try
@@ -72,8 +74,8 @@ namespace BvNugetPreviewGenerator.Generate
                     RunDotNetBuild(context, buildConfiguration, worker, e);
                     if (CheckCancellation(worker, e)) return;
 
-                    Progress(worker, 75, "Pushing Project to Nuget");
-                    RunNugetPush(context, worker, e);
+                    Progress(worker, 75, "Copying Nuget Package to Local Repo");
+                    CopyNugetToLocalRepo(context, worker);
                     if (CheckCancellation(worker, e)) return;
 
                     Progress(worker, 95, "Cleaning Up");
@@ -105,12 +107,10 @@ namespace BvNugetPreviewGenerator.Generate
 
             worker.RunWorkerCompleted += (sender, e) =>
             {
-                // Quitar el worker de la lista de activos
                 lock (_lock)
                 {
                     _activeWorkers.Remove(worker);
                 }
-                CompleteEvent?.Invoke(result);
                 tcs.SetResult(result);
             };
 
@@ -179,49 +179,55 @@ namespace BvNugetPreviewGenerator.Generate
             var projectPath = context.ProjectPath;
             var outputFolder = context.TempPath;
             var version = context.VersionNo;
+            var intermediateOutputFolder = Path.Combine(outputFolder, "obj");
 
             var output = RunTask(context, "dotnet",
                 $"build \"{projectPath}\" " +
                 $"-c \"{buildConfiguration}\" " +
-                $"-o:\"{outputFolder}\"", worker);
+                $"-o:\"{outputFolder}\" " +
+                $"-m:{ParallelBuild}",
+                worker);
             Log(worker, $"DotNet Build Complete: {output}");
             return output;
         }
 
-        private string RunNugetPush(PackageGeneratorContext context, BackgroundWorker worker, DoWorkEventArgs e)
+        private void CopyNugetToLocalRepo(PackageGeneratorContext context, BackgroundWorker worker)
         {
-            var projectPath = context.ProjectPath;
-            var outputFolder = context.TempPath;
             var version = context.VersionNo;
-            var lastDirMarker = projectPath.LastIndexOf("\\");
-            var fileName = projectPath.Substring(lastDirMarker + 1);
-            var lastDot = fileName.LastIndexOf(".");
-            var projectName = fileName.Substring(0, lastDot);
+            var projectName = Path.GetFileNameWithoutExtension(context.ProjectFilename);
             var packageFileName = $"{projectName}.{version}.nupkg";
-            Log(worker, $"Running DotNet Push Of {packageFileName}");
-            context.PackageFilename = packageFileName;
+            var sourcePath = Path.Combine(context.TempPath, packageFileName);
+            var destPath = Path.Combine(context.NugetPath, packageFileName);
 
-            var fullProjName = $"{outputFolder}{packageFileName}";
+            if (!File.Exists(sourcePath))
+            {
+                Log(worker, $"NuGet package not found at {sourcePath}");
+                throw new PackageGenerateException("NuGet package not found after build.");
+            }
 
-            var output = RunTask(context, "dotnet",
-                $"nuget push {fullProjName} -s {context.NugetPath}", worker);
-            Log(worker, $"DotNet Push Complete");
-            return output;
+            File.Copy(sourcePath, destPath, true);
+            Log(worker, $"Copied NuGet package to {destPath}");
         }
 
         private void CleanUp(PackageGeneratorContext context, BackgroundWorker worker, DoWorkEventArgs e)
         {
             Log(worker, "Cleaning up temporary files");
             var tempFolder = context.TempPath;
-            var packageFileName = context.PackageFilename;
-            var fullProjName = $"{tempFolder}{packageFileName}";
-            if (File.Exists(fullProjName))
-                File.Delete(fullProjName);
-            Log(worker, "Cleanup Complete");
+            try
+            {
+                if (Directory.Exists(tempFolder))
+                {
+                    Directory.Delete(tempFolder, true);
+                    Log(worker, $"Deleted temp folder: {tempFolder}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log(worker, $"Error deleting temp folder: {ex.Message}");
+            }
 
             DeleteInstalledNugetPackage(context.ProjectFilename.Replace(".csproj", ""), context.VersionNo, worker);
-
-            Log(worker, $"Deleted installed Nuget Package {packageFileName}");
+            Log(worker, $"Deleted installed Nuget Package {context.PackageFilename}");
         }
 
         public void DeleteInstalledNugetPackage(string packageId, string version, BackgroundWorker worker, string customPackagesPath = null)
@@ -306,7 +312,7 @@ namespace BvNugetPreviewGenerator.Generate
             }
         }
 
-        public Task GeneratePackageAsync(
+        public Task<PackageGenerateResult> GeneratePackageAsync(
             IEnumerable<string> projectPaths,
             string localRepoPath,
             string buildConfiguration,
@@ -314,50 +320,205 @@ namespace BvNugetPreviewGenerator.Generate
             int maxDegreeOfParallelism = 4
         )
         {
+            ParallelBuild = maxDegreeOfParallelism;
             int total = projectPaths.Count();
             int success = 0;
             int failed = 0;
             PackagesLeft?.Invoke($"Success 0/{total} - Failed 0/{total}");
 
-            if (parallel)
-            {
-                var semaphore = new System.Threading.SemaphoreSlim(maxDegreeOfParallelism);
-                var tasks = projectPaths.Select(async projectPath =>
-                {
-                    await semaphore.WaitAsync();
-                    try
-                    {
-                        var result = await GeneratePackageAsync(projectPath, localRepoPath, buildConfiguration);
-                        if (result != null && result.ResultType == PreviewPackageGenerateResultType.Success)
-                        {
-                            int done = System.Threading.Interlocked.Increment(ref success);
-                            PackagesLeft?.Invoke($"Success {done}/{total} - Failed {failed}/{total}");
-                        }
-                        else
-                        {
-                            int fail = System.Threading.Interlocked.Increment(ref failed);
-                            PackagesLeft?.Invoke($"Success {success}/{total} - Failed {fail}/{total}");
-                        }
-                    }
-                    finally
-                    {
-                        semaphore.Release();
-                    }
-                });
-                return Task.WhenAll(tasks);
-            }
-            else
-            {
-                return GenerateSequentialAsync(projectPaths, localRepoPath, buildConfiguration, total, success, failed);
-            }
+            return GenerateSequentialAsync(projectPaths, localRepoPath, buildConfiguration, total, success, failed);
         }
 
-        private async Task GenerateSequentialAsync(IEnumerable<string> projectPaths, string localRepoPath, string buildConfiguration, int total, int success, int failed)
+        public Task BuildSolutionAndCopyNupkgsAsync(
+         string solutionPath,
+         string buildConfiguration,
+         string localRepoPath)
         {
+            var worker = new BackgroundWorker();
+            worker.WorkerReportsProgress = true;
+            worker.WorkerSupportsCancellation = true;
+
+            lock (_lock)
+            {
+                _activeWorkers.Add(worker);
+            }
+
+            worker.DoWork += (s, e) =>
+            {
+                var outputFolder = Path.Combine(Path.GetTempPath(), "nugetsolutionbuild");
+                Directory.CreateDirectory(outputFolder);
+
+                int success = 0;
+                int failed = 0;
+                int total = 0;
+                PackageGenerateResult result = null;
+
+                PackagesLeft?.Invoke($"Starting...");
+
+                try
+                {
+                    // 0. Restaurar paquetes primero
+                    Progress(worker, 2, "Restoring NuGet packages...");
+                    string restoreCmd = $"restore \"{solutionPath}\"";
+                    try
+                    {
+                        string restoreOutput = RunTask(null, "dotnet", restoreCmd, worker);
+                        Log(worker, restoreOutput);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log(worker, $"Warning: Package restore failed but continuing: {ex.Message}");
+                    }
+
+                    if (CheckCancellation(worker, e)) return;
+
+                    // 1. Clean
+                    Progress(worker, 5, "Cleaning solution...");
+                    string cleanCmd = $"clean \"{solutionPath}\" -c \"{buildConfiguration}\"";
+                    try
+                    {
+                        string cleanOutput = RunTask(null, "dotnet", cleanCmd, worker);
+                        Log(worker, cleanOutput);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log(worker, $"Warning: Clean operation failed but continuing: {ex.Message}");
+                    }
+
+                    if (CheckCancellation(worker, e)) return;
+
+                    // 2. Build
+                    Progress(worker, 30, "Building solution...");
+                    string buildCmd = $"build \"{solutionPath}\" -c \"{buildConfiguration}\" -o \"{outputFolder}\"";
+                    string buildOutput = RunTask(null, "dotnet", buildCmd, worker);
+                    Log(worker, buildOutput);
+
+                    if (CheckCancellation(worker, e)) return;
+
+                    // 3. Buscar y copiar nupkgs
+                    Progress(worker, 70, "Copying NuGet packages...");
+                    var nupkgs = Directory.GetFiles(outputFolder, "*.nupkg", SearchOption.AllDirectories);
+                    total = nupkgs.Length;
+
+                    if (!Directory.Exists(localRepoPath))
+                        Directory.CreateDirectory(localRepoPath);
+
+                    foreach (var nupkg in nupkgs)
+                    {
+                        try
+                        {
+                            var dest = Path.Combine(localRepoPath, Path.GetFileName(nupkg));
+                            File.Copy(nupkg, dest, true);
+                            Log(worker, $"Copied {nupkg} to {dest}");
+                            success++;
+                        }
+                        catch (Exception ex)
+                        {
+                            Log(worker, $"Failed to copy {nupkg}: {ex.Message}");
+                            failed++;
+                        }
+                        PackagesLeft?.Invoke($"Success {success}/{total} - Failed {failed}/{total}");
+                    }
+
+                    if (total == 0)
+                        Log(worker, "No NuGet packages found to copy.");
+
+                    if (CheckCancellation(worker, e)) return;
+
+                    // 4. Limpieza final
+                    Progress(worker, 90, "Cleaning up temporary files...");
+                    try
+                    {
+                        Directory.Delete(outputFolder, true);
+                        Log(worker, $"Deleted temp folder: {outputFolder}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log(worker, $"Error deleting temp folder: {ex.Message}");
+                    }
+
+                    // Eliminar paquetes instalados de la caché de NuGet
+                    Progress(worker, 95, "Removing installed NuGet packages from cache...");
+                    foreach (var nupkg in nupkgs)
+                    {
+                        try
+                        {
+                            string filename = Path.GetFileNameWithoutExtension(nupkg);
+                            // El formato es [PackageId].[1.2.3.4].nupkg
+                            int firstDotIndex = filename.IndexOf('.');
+                            int lastDotIndex = filename.LastIndexOf('.');
+
+                            string packageId = filename.Substring(0, firstDotIndex);
+                            string version = filename.Substring(firstDotIndex + 1);
+                            DeleteInstalledNugetPackage(packageId, version, worker);
+                            Log(worker, $"Deleted installed NuGet package: {packageId} {version}");
+
+                        }
+                        catch (Exception ex)
+                        {
+                            Log(worker, $"Error removing NuGet package from cache: {ex.Message}");
+                        }
+                    }
+                    Progress(worker, 100, $"Build and copy complete. {success} packages moved to {localRepoPath}");
+                    PackagesLeft?.Invoke($"Success {success}/{total} - Failed {failed}/{total}");
+                    var context = new PackageGeneratorContext
+                    {
+                        ProjectPath = solutionPath,
+                        ProjectFilename = Path.GetFileName(solutionPath),
+                        NugetPath = localRepoPath,
+                        TempPath = outputFolder,
+                        VersionNo = null,
+                        PackageFilename = null
+                    };
+                    result = PackageGenerateResult.CreateSuccessResult(context);
+                }
+                catch (Exception ex)
+                {
+                    // Reportar fallo inesperado
+                    var context = new PackageGeneratorContext
+                    {
+                        ProjectPath = solutionPath,
+                        ProjectFilename = Path.GetFileName(solutionPath),
+                        NugetPath = localRepoPath,
+                        TempPath = outputFolder
+                    };
+                    result = PackageGenerateResult.CreateUnexpectedFailureResult(context, ex);
+                }
+                finally
+                {
+                    lock (_lock)
+                    {
+                        _activeWorkers.Remove(worker);
+                    }
+                    CompleteEvent?.Invoke(result);
+                }
+
+            };
+
+            worker.ProgressChanged += (sender, e) =>
+            {
+                var progress = e.UserState as PackageGenerateProgress;
+                if (progress == null) return;
+                if (progress.IsUpdate)
+                    ProgressEvent?.Invoke(e.ProgressPercentage, progress.LogMessage);
+                else
+                    LogEvent?.Invoke(progress.LogMessage);
+            };
+
+            worker.RunWorkerAsync();
+            return Task.CompletedTask;
+        }
+
+        private async Task<PackageGenerateResult> GenerateSequentialAsync(IEnumerable<string> projectPaths, string localRepoPath, string buildConfiguration, int total, int success, int failed)
+        {
+            var results = new List<PackageGenerateResult>();
+
             foreach (var projectPath in projectPaths)
             {
                 PackagesLeft?.Invoke($"Success {success}/{total} - Failed {failed}/{total}");
                 var result = await GeneratePackageAsync(projectPath, localRepoPath, buildConfiguration);
+                results.Add(result);
+
                 if (result != null && result.ResultType == PreviewPackageGenerateResultType.Success)
                 {
                     success++;
@@ -367,7 +528,33 @@ namespace BvNugetPreviewGenerator.Generate
                     failed++;
                 }
             }
+
             PackagesLeft?.Invoke($"Success {success}/{total} - Failed {failed}/{total}");
+
+            // Crear un contexto consolidado para el resultado final
+            var consolidatedContext = new PackageGeneratorContext
+            {
+                NugetPath = localRepoPath,
+                ProjectPath = "Multiple Projects",
+                ProjectFilename = $"{total} projects"
+            };
+            PackageGenerateResult finalResult = null;
+            if (failed == 0)
+            {
+                finalResult = PackageGenerateResult.CreateSuccessResult(consolidatedContext);
+                finalResult.Message = $"Successfully processed {success} packages";
+            }
+            else
+            {
+                finalResult = PackageGenerateResult.CreateExpectedFailureResult(
+                    consolidatedContext,
+                    new Exception($"Failed to process {failed} of {total} packages")
+                );
+                ;
+            }
+
+            CompleteEvent?.Invoke(finalResult);
+            return finalResult;
         }
 
         public void Cancel()
