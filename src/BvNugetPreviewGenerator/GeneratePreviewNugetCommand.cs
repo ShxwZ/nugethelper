@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.ComponentModel.Design;
-using System.Globalization;
 using System.IO;
-using System.Reflection.Emit;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using BvNugetPreviewGenerator.Generate;
@@ -17,131 +13,123 @@ using Task = System.Threading.Tasks.Task;
 namespace BvNugetPreviewGenerator
 {
     /// <summary>
-    /// Command handler
+    /// Command handler for NuGet package generation operations
     /// </summary>
     internal sealed class GeneratePreviewNugetCommand
     {
-        /// <summary>
-        /// Command ID.
-        /// </summary>
-        public const int CommandIdSolution = 0x0100;
-        public const int CommandIdProject = 0x0101;
-        public const int CommandIdAsSolution = 0x0102;
+        #region Command IDs and Configuration
 
         /// <summary>
-        /// Command menu group (command set GUID).
+        /// Command IDs for menu items
+        /// </summary>
+        private static class CommandIds
+        {
+            public const int Solution = 0x0100;
+            public const int Project = 0x0101;
+            public const int AsSolution = 0x0102;
+        }
+
+        /// <summary>
+        /// Command menu group (command set GUID)
         /// </summary>
         public static readonly Guid CommandSet = new Guid("be00d81f-7240-4b92-aba6-995490d5063b");
 
+        #endregion
+
         /// <summary>
-        /// VS Package that provides this command, not null.
+        /// VS Package that provides this command
         /// </summary>
         private readonly AsyncPackage package;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="GeneratePreviewNugetCommand"/> class.
-        /// Adds our command handlers for menu (commands must exist in the command table file)
+        /// Gets the singleton instance of the command
         /// </summary>
-        /// <param name="package">Owner package, not null.</param>
-        /// <param name="commandService">Command service to add command to, not null.</param>
+        public static GeneratePreviewNugetCommand Instance { get; private set; }
+
+        /// <summary>
+        /// Gets the service provider from the owner package
+        /// </summary>
+        private System.IServiceProvider ServiceProvider => this.package;
+
+        /// <summary>
+        /// Initializes a new instance of the GeneratePreviewNugetCommand class
+        /// </summary>
+        /// <param name="package">Owner package, not null</param>
+        /// <param name="commandService">Command service to add command to, not null</param>
         private GeneratePreviewNugetCommand(AsyncPackage package, OleMenuCommandService commandService)
         {
             this.package = package ?? throw new ArgumentNullException(nameof(package));
             commandService = commandService ?? throw new ArgumentNullException(nameof(commandService));
 
-            // Comando para la solución
-            var menuCommandID = new CommandID(CommandSet, CommandIdSolution);
-            var menuItem = new MenuCommand(this.ExecuteSolution, menuCommandID);
+            // Register command handlers
+            RegisterCommand(commandService, CommandIds.Solution, ExecuteSolution);
+            RegisterCommand(commandService, CommandIds.Project, ExecuteProject);
+            RegisterCommand(commandService, CommandIds.AsSolution, ExecuteAsSolution);
+        }
+
+        /// <summary>
+        /// Registers a command with the command service
+        /// </summary>
+        private void RegisterCommand(OleMenuCommandService commandService, int commandId, EventHandler handler)
+        {
+            var commandID = new CommandID(CommandSet, commandId);
+            var menuItem = new MenuCommand(handler, commandID);
             commandService.AddCommand(menuItem);
-
-            // Comando para el proyecto
-            var menuCommandIDProject = new CommandID(CommandSet, CommandIdProject);
-            var menuItemProject = new MenuCommand(this.ExecuteProject, menuCommandIDProject);
-            commandService.AddCommand(menuItemProject);
-
-            // Comando como solucion
-            var menuCommandIDAsSolution = new CommandID(CommandSet, CommandIdAsSolution);
-            var menuItemAsSolution = new MenuCommand(this.ExecuteAsSolution, menuCommandIDAsSolution);
-            commandService.AddCommand(menuItemAsSolution);
         }
 
         /// <summary>
-        /// Gets the instance of the command.
+        /// Initializes the singleton instance of the command
         /// </summary>
-        public static GeneratePreviewNugetCommand Instance
-        {
-            get;
-            private set;
-        }
-
-        /// <summary>
-        /// Gets the service provider from the owner package.
-        /// </summary>
-        private System.IServiceProvider ServiceProvider
-        {
-            get
-            {
-                return this.package;
-            }
-        }
-
-        /// <summary>
-        /// Initializes the singleton instance of the command.
-        /// </summary>
-        /// <param name="package">Owner package, not null.</param>
         public static async Task InitializeAsync(AsyncPackage package)
         {
-            // Switch to the main thread - the call to AddCommand in Command1's constructor requires
-            // the UI thread.
+            // Switch to the main thread - the call to AddCommand requires the UI thread
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(package.DisposalToken);
 
             OleMenuCommandService commandService = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
             Instance = new GeneratePreviewNugetCommand(package, commandService);
         }
 
+        #region Command Execution Methods
+
         /// <summary>
-        /// Executes the command for the solution.
+        /// Executes the command for the solution - processes all projects
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void ExecuteSolution(object sender, EventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            EnvDTE.DTE dte = (EnvDTE.DTE)ServiceProvider.GetService(typeof(EnvDTE.DTE));
-            var solution = dte?.Solution;
-            if (solution == null || solution.Projects == null)
-            {
-                MessageBox.Show("Indeterminated solution", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
 
-            // Procesa todos los proyectos de la solución
+            if (!TryGetSolution(out Solution solution))
+                return;
+
+            // Process all NuGet projects in the solution
             var projectsPath = GetNugetProjectPaths(solution.Projects);
             ShowGenerateFormForProjects(projectsPath);
         }
 
+        /// <summary>
+        /// Executes the command to build the entire solution as a unit
+        /// </summary>
         private void ExecuteAsSolution(object sender, EventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            EnvDTE.DTE dte = (EnvDTE.DTE)ServiceProvider.GetService(typeof(EnvDTE.DTE));
-            var solution = dte?.Solution;
-            if (solution == null || solution.Projects == null)
-            {
-                MessageBox.Show("Indeterminated solution", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+            if (!TryGetSolution(out _))
                 return;
-            }
 
             ShowGenerateFormAsSolution();
         }
+
         /// <summary>
-        /// Executes the command for the project.
+        /// Executes the command for selected projects
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void ExecuteProject(object sender, EventArgs e)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            EnvDTE.DTE dte = (EnvDTE.DTE)ServiceProvider.GetService(typeof(EnvDTE.DTE));
+
+            EnvDTE.DTE dte = GetDTE();
+            if (dte == null)
+                return;
+
             var selectedItems = dte.SelectedItems;
             var projectsPath = new List<string>();
 
@@ -157,11 +145,43 @@ namespace BvNugetPreviewGenerator
 
             ShowGenerateFormForProjects(projectsPath);
         }
+
+        #endregion
+
+        #region Solution and Project Processing
+
         /// <summary>
-        /// Gets the paths of all NuGet projects in the solution.
+        /// Gets the DTE service
         /// </summary>
-        /// <param name="projects"></param>
-        /// <returns></returns>
+        private EnvDTE.DTE GetDTE()
+        {
+            return (EnvDTE.DTE)ServiceProvider.GetService(typeof(EnvDTE.DTE));
+        }
+
+        /// <summary>
+        /// Tries to get the active solution
+        /// </summary>
+        /// <param name="solution">The solution if found, otherwise null</param>
+        /// <returns>True if solution was found, otherwise false</returns>
+        private bool TryGetSolution(out Solution solution)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            EnvDTE.DTE dte = GetDTE();
+            solution = dte?.Solution;
+
+            if (solution == null || solution.Projects == null)
+            {
+                MessageBox.Show("Undetermined solution", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Gets the paths of all NuGet projects in the solution
+        /// </summary>
         private List<string> GetNugetProjectPaths(Projects projects)
         {
             var projectsPath = new List<string>();
@@ -172,6 +192,9 @@ namespace BvNugetPreviewGenerator
             return projectsPath;
         }
 
+        /// <summary>
+        /// Recursively adds a project and its sub-projects to the list
+        /// </summary>
         private void AddProjectAndSubProjects(Project project, List<string> projectsPath)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -198,14 +221,13 @@ namespace BvNugetPreviewGenerator
         }
 
         /// <summary>
-        /// Checks if the project is a NuGet project.
+        /// Checks if the project is a NuGet project
         /// </summary>
-        /// <param name="projectFileName"></param>
-        /// <returns></returns>
         private bool IsNugetProject(string projectFileName)
         {
             if (!projectFileName.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
                 return false;
+
             try
             {
                 var xml = System.Xml.Linq.XDocument.Load(projectFileName);
@@ -219,59 +241,76 @@ namespace BvNugetPreviewGenerator
                 return false;
             }
         }
+
+        #endregion
+
+        #region UI Form Management
+
         /// <summary>
-        /// Shows the form to generate the NuGet package.
+        /// Shows the form to generate NuGet packages for specific projects
         /// </summary>
-        /// <param name="projectsPath"></param>
         private void ShowGenerateFormForProjects(List<string> projectsPath)
         {
             var bvPreviewPackage = this.package as BvNugetPreviewGeneratorPackage;
-            var generator = new PackageGenerator();
 
             if (projectsPath == null || projectsPath.Count == 0)
             {
-                MessageBox.Show("Not found NuGets projects (with GeneratePackageOnBuild and Version).", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("No NuGet projects found (with GeneratePackageOnBuild and Version).",
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
+            var generator = new PackageGenerator();
+
             using (var form = new GenerateForm(generator))
             {
-                form.BuildConfiguration = bvPreviewPackage.BuildConfiguration;
-                form.LocalRepoPath = bvPreviewPackage.DestinationNugetPreviewSource;
+                ConfigureGenerateForm(form, bvPreviewPackage);
                 form.ProjectPaths = projectsPath;
-                form.Parallel = bvPreviewPackage.Parallel;
-                form.MaxDegreeOfParallelism = bvPreviewPackage.MaxDegreeOfParallelism;
+                form.AsSolution = false;
                 form.ShowDialog();
             }
         }
 
+        /// <summary>
+        /// Shows the form to generate NuGet packages for the entire solution
+        /// </summary>
         private void ShowGenerateFormAsSolution()
         {
             var bvPreviewPackage = this.package as BvNugetPreviewGeneratorPackage;
-            var generator = new PackageGenerator();
 
-            EnvDTE.DTE dte = (EnvDTE.DTE)ServiceProvider.GetService(typeof(EnvDTE.DTE));
+            ThreadHelper.ThrowIfNotOnUIThread();
+            EnvDTE.DTE dte = GetDTE();
             string solutionPath = dte?.Solution?.FullName;
 
             if (string.IsNullOrEmpty(solutionPath) || !File.Exists(solutionPath))
             {
-                MessageBox.Show("No se ha encontrado la solución activa.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Active solution not found.",
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
+            var generator = new PackageGenerator();
+
             using (var form = new GenerateForm(generator))
             {
-                form.AsSolution = true;
+                ConfigureGenerateForm(form, bvPreviewPackage);
                 form.SolutionPath = solutionPath;
-                form.BuildConfiguration = bvPreviewPackage.BuildConfiguration;
-                form.LocalRepoPath = bvPreviewPackage.DestinationNugetPreviewSource;
-                form.Parallel = bvPreviewPackage.Parallel;
-                form.MaxDegreeOfParallelism = bvPreviewPackage.MaxDegreeOfParallelism;
+                form.AsSolution = true;
                 form.ShowDialog();
             }
         }
 
+        /// <summary>
+        /// Configures common settings for the Generate Form
+        /// </summary>
+        private void ConfigureGenerateForm(GenerateForm form, BvNugetPreviewGeneratorPackage packageSettings)
+        {
+            form.BuildConfiguration = packageSettings.BuildConfiguration;
+            form.LocalRepoPath = packageSettings.DestinationNugetPreviewSource;
+            form.Parallel = packageSettings.Parallel;
+            form.MaxDegreeOfParallelism = packageSettings.MaxDegreeOfParallelism;
+        }
 
-
+        #endregion
     }
 }

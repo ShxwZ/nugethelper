@@ -52,14 +52,22 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="GeneratePreviewNugetCommand.cs" />
+    <Compile Include="Services\DotNetBuildService.cs" />
+    <Compile Include="Services\FileSystemService.cs" />
     <Compile Include="Generate\GenerateForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Generate\GenerateForm.Designer.cs">
       <DependentUpon>GenerateForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Services\Interfaces\IDotNetBuildService.cs" />
+    <Compile Include="Services\Interfaces\IFileSystemService.cs" />
+    <Compile Include="Services\Interfaces\INuGetPackageService.cs" />
     <Compile Include="Generate\IPackageGenerator.cs" />
+    <Compile Include="Services\Interfaces\IProgressReporter.cs" />
+    <Compile Include="Services\NuGetPackageService.cs" />
     <Compile Include="Generate\PackageGenerateProgress.cs" />
+    <Compile Include="Generate\PackageGeneratorProgressAdapter.cs" />
     <Compile Include="Generate\PackageVersion.cs" />
     <Compile Include="Generate\PackageGenerateException.cs" />
     <Compile Include="Generate\PackageGenerateResult.cs" />
