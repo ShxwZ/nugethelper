@@ -64,5 +64,10 @@ namespace BvNugetPreviewGenerator.Generate
                 await writer.WriteAsync(contents);
             }
         }
+
+        public async Task DeleteFileAsync(string path)
+        {
+            await Task.Run(() => File.Delete(path));
+        }
     }
 }

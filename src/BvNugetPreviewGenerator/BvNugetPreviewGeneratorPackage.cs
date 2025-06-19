@@ -72,6 +72,24 @@ namespace BvNugetPreviewGenerator
             }
         }
 
+        public bool ClearLocalRepositoryBeforeBuild
+        {
+            get
+            {
+                PreviewGeneratorOptions page = (PreviewGeneratorOptions)GetDialogPage(typeof(PreviewGeneratorOptions));
+                return page.ClearLocalRepositoryBeforeBuild;
+            }
+        }
+
+        public bool CleanBeforeBuild
+        {
+            get
+            {
+                PreviewGeneratorOptions page = (PreviewGeneratorOptions)GetDialogPage(typeof(PreviewGeneratorOptions));
+                return page.CleanBeforeBuild;
+            }
+        }
+
         #endregion
 
         #region Package Members

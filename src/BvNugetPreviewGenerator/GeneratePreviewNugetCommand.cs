@@ -309,6 +309,8 @@ namespace BvNugetPreviewGenerator
             form.LocalRepoPath = packageSettings.DestinationNugetPreviewSource;
             form.Parallel = packageSettings.Parallel;
             form.MaxDegreeOfParallelism = packageSettings.MaxDegreeOfParallelism;
+            form.ClearLocalRepositoryBeforeBuild = packageSettings.ClearLocalRepositoryBeforeBuild;
+            form.CleanBeforeBuild = packageSettings.CleanBeforeBuild;
         }
 
         #endregion

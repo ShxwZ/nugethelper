@@ -17,5 +17,6 @@ namespace BvNugetPreviewGenerator.Generate
         Task<IEnumerable<string>> FindFilesAsync(string directory, string searchPattern, bool searchSubdirectories);
         Task<string> ReadAllTextAsync(string path, CancellationToken cancellationToken = default);
         Task WriteAllTextAsync(string path, string contents, CancellationToken cancellationToken = default);
+        Task DeleteFileAsync(string path);
     }
 }

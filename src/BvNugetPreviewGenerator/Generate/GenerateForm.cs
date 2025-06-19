@@ -17,6 +17,10 @@ namespace BvNugetPreviewGenerator.Generate
         public bool AsSolution { get; set; } = false;
         public int MaxDegreeOfParallelism { get; set; }
 
+        public bool ClearLocalRepositoryBeforeBuild { get; set; } = true;
+
+        public bool CleanBeforeBuild { get; set; } = true;
+
         // Private fields
         private readonly IPackageGenerator _generator;
         private PackageGenerateResult _previewPackageGenerateResult;
@@ -203,11 +207,11 @@ namespace BvNugetPreviewGenerator.Generate
             {
                 if (AsSolution)
                 {
-                    await _generator.BuildSolutionAndCopyNupkgsAsync(SolutionPath, BuildConfiguration, LocalRepoPath);
+                    await _generator.BuildSolutionAndCopyNupkgsAsync(SolutionPath, BuildConfiguration, LocalRepoPath, CleanBeforeBuild, ClearLocalRepositoryBeforeBuild);
                 }
                 else
                 {
-                    await _generator.GeneratePackageAsync(ProjectPaths, LocalRepoPath, BuildConfiguration, Parallel, MaxDegreeOfParallelism);
+                    await _generator.GeneratePackageAsync(ProjectPaths, LocalRepoPath, BuildConfiguration, CleanBeforeBuild, ClearLocalRepositoryBeforeBuild, Parallel, MaxDegreeOfParallelism);
                 }
             }
             catch (Exception ex)

@@ -52,7 +52,9 @@ namespace BvNugetPreviewGenerator.Generate
         public async Task<PackageGenerateResult> GeneratePackageAsync(
             string projectPath,
             string localRepoPath,
-            string buildConfiguration)
+            string buildConfiguration,
+            bool cleanBeforeBuild,
+            bool clearLocalRepoBeforeBuild)
         {
             try
             {
@@ -75,12 +77,61 @@ namespace BvNugetPreviewGenerator.Generate
                     await ValidateInitialRequirements(localRepoPath, projectPath);
                     reporter.ReportProgress(5, "Initial Checks Complete");
 
+                    if (clearLocalRepoBeforeBuild && await _fileSystem.DirectoryExistsAsync(localRepoPath))
+                    {
+                        reporter.ReportProgress(7, "Clearing local NuGet repository...");
+                        try
+                        {
+                            var existingPackages = await _fileSystem.FindFilesAsync(
+                                localRepoPath,
+                                $"{projectName}*.nupkg",
+                                false);
+
+                            int deletedCount = 0;
+                            foreach (var package in existingPackages)
+                            {
+                                try
+                                {
+                                    await _fileSystem.DeleteFileAsync(package);
+                                    deletedCount++;
+                                }
+                                catch (Exception ex)
+                                {
+                                    reporter.LogMessage($"Warning: Could not delete package {package}: {ex.Message}");
+                                }
+                            }
+
+                            reporter.LogMessage($"Cleared {deletedCount} existing NuGet package(s) for {projectName} from local repository");
+                        }
+                        catch (Exception ex)
+                        {
+                            reporter.LogMessage($"Warning: Failed to clear local repository: {ex.Message}");
+                        }
+                    }
+
                     reporter.ReportProgress(10, "Get Project Version");
                     await GetProjectVersionAsync(context, reporter);
                     _cancellationTokenSource.Token.ThrowIfCancellationRequested();
 
-                    reporter.ReportProgress(15, "Building Project");
+                    if (cleanBeforeBuild)
+                    {
+                        reporter.ReportProgress(12, "Cleaning project...");
+                        try
+                        {
+                            await _buildService.CleanAsync(
+                                context.ProjectPath, buildConfiguration, reporter, _cancellationTokenSource.Token);
+                        }
+                        catch (Exception ex)
+                        {
+                            reporter.LogMessage($"Warning: Clean operation failed but continuing: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        reporter.LogMessage("Clean before build option is disabled. Skipping clean step.");
+                    }
 
+                    reporter.ReportProgress(15, "Building Project");
                     await _buildService.BuildAsync(
                         context.ProjectPath, buildConfiguration, ParallelBuild, reporter, _cancellationTokenSource.Token);
 
@@ -213,6 +264,7 @@ namespace BvNugetPreviewGenerator.Generate
             IEnumerable<string> projectPaths,
             string localRepoPath,
             string buildConfiguration,
+            bool cleanBeforeBuild, bool clearLocalRepoBeforeBuild,
             bool parallel = true,
             int maxDegreeOfParallelism = 4
         )
@@ -221,13 +273,14 @@ namespace BvNugetPreviewGenerator.Generate
             int total = projectPaths.Count();
             PackagesLeft?.Invoke($"Success 0/{total} - Failed 0/{total}");
 
-            return await ProcessMultipleProjectsAsync(projectPaths, localRepoPath, buildConfiguration, total);
+            return await ProcessMultipleProjectsAsync(projectPaths, localRepoPath, buildConfiguration, cleanBeforeBuild, clearLocalRepoBeforeBuild,total );
         }
 
         private async Task<PackageGenerateResult> ProcessMultipleProjectsAsync(
             IEnumerable<string> projectPaths,
             string localRepoPath,
             string buildConfiguration,
+            bool cleanBeforeBuild, bool clearLocalRepoBeforeBuild,
             int total)
         {
             int success = 0, failed = 0;
@@ -239,7 +292,7 @@ namespace BvNugetPreviewGenerator.Generate
                     break;
 
                 PackagesLeft?.Invoke($"Success {success}/{total} - Failed {failed}/{total}");
-                var result = await GeneratePackageAsync(projectPath, localRepoPath, buildConfiguration);
+                var result = await GeneratePackageAsync(projectPath, localRepoPath, buildConfiguration, cleanBeforeBuild, clearLocalRepoBeforeBuild);
 
                 if (result != null)
                 {
@@ -284,7 +337,7 @@ namespace BvNugetPreviewGenerator.Generate
         public async Task BuildSolutionAndCopyNupkgsAsync(
          string solutionPath,
          string buildConfiguration,
-         string localRepoPath)
+         string localRepoPath, bool cleanBeforeBuild, bool clearLocalRepoBeforeBuild)
         {
             var reporter = CreateProgressReporter(_cancellationTokenSource.Token);
             var outputFolder = Path.Combine(Path.GetTempPath(), "nugetsolutionbuild");
@@ -299,6 +352,36 @@ namespace BvNugetPreviewGenerator.Generate
 
             try
             {
+
+                if (clearLocalRepoBeforeBuild && await _fileSystem.DirectoryExistsAsync(localRepoPath))
+                {
+                    reporter.ReportProgress(1, "Clearing local NuGet repository...");
+                    try
+                    {
+                        var existingPackages = await _fileSystem.FindFilesAsync(localRepoPath, "*.nupkg", false);
+                        int deletedCount = 0;
+
+                        foreach (var package in existingPackages)
+                        {
+                            try
+                            {
+                                await _fileSystem.DeleteFileAsync(package);
+                                deletedCount++;
+                            }
+                            catch (Exception ex)
+                            {
+                                reporter.LogMessage($"Warning: Could not delete package {package}: {ex.Message}");
+                            }
+                        }
+
+                        reporter.LogMessage($"Cleared {deletedCount} NuGet packages from local repository");
+                    }
+                    catch (Exception ex)
+                    {
+                        reporter.LogMessage($"Warning: Failed to clear local repository: {ex.Message}");
+                    }
+                }
+
                 // Restore NuGet packages
                 reporter.ReportProgress(2, "Restoring NuGet packages...");
                 try
@@ -313,19 +396,54 @@ namespace BvNugetPreviewGenerator.Generate
 
                 if (_cancellationTokenSource.IsCancellationRequested) return;
 
-                // Clean solution
-                reporter.ReportProgress(5, "Cleaning solution...");
-                try
+
+                if (cleanBeforeBuild)
                 {
-                    await _buildService.CleanAsync(
-                        solutionPath, buildConfiguration, reporter, _cancellationTokenSource.Token);
+                    reporter.ReportProgress(5, "Cleaning solution...");
+                    try
+                    {
+                        await _buildService.CleanAsync(
+                            solutionPath, buildConfiguration, reporter, _cancellationTokenSource.Token);
+                    }
+                    catch (Exception ex)
+                    {
+                        reporter.LogMessage($"Warning: Clean operation failed but continuing: {ex.Message}");
+                    }
+
+                    if (_cancellationTokenSource.IsCancellationRequested) return;
                 }
-                catch (Exception ex)
+                else
                 {
-                    reporter.LogMessage($"Warning: Clean operation failed but continuing: {ex.Message}");
+                    reporter.LogMessage("Clean before build option is disabled. Skipping clean step.");
                 }
 
-                if (_cancellationTokenSource.IsCancellationRequested) return;
+                reporter.ReportProgress(20, "Analizando proyectos para determinar versiones...");
+                var projectVersions = new Dictionary<string, string>();
+                var solutionDirectory = Path.GetDirectoryName(solutionPath);
+ 
+                var projectFiles = await _fileSystem.FindFilesAsync(solutionDirectory, "*.csproj", true);
+                foreach (var projectFile in projectFiles)
+                {
+                    try
+                    {
+                        var projectName = Path.GetFileNameWithoutExtension(projectFile);
+                        var projectContent = await _fileSystem.ReadAllTextAsync(projectFile);
+
+                        var doc = new XmlDocument();
+                        doc.LoadXml(projectContent);
+                        var versionNode = doc.SelectSingleNode("/Project/PropertyGroup/Version");
+
+                        if (versionNode != null && PackageVersion.TryParse(versionNode.InnerText, out var version))
+                        {
+                            projectVersions[projectName] = version.ToString();
+                            reporter.LogMessage($"Proyecto {projectName}: versión {version}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        reporter.LogMessage($"Error al obtener versión del proyecto {projectFile}: {ex.Message}");
+                    }
+                }
 
                 // Compile solution
                 reporter.ReportProgress(30, "Building solution...");
@@ -334,42 +452,60 @@ namespace BvNugetPreviewGenerator.Generate
 
                 if (_cancellationTokenSource.IsCancellationRequested) return;
 
-                // Search for NuGet packages in bin folders of projects
                 reporter.ReportProgress(70, "Searching for NuGet packages in project bin folders...");
-                var solutionDirectory = Path.GetDirectoryName(solutionPath);
+                
 
-                // Primero encontrar todos los directorios del proyecto
-                reporter.LogMessage("Buscando paquetes NuGet en las carpetas bin de los proyectos");
+                reporter.LogMessage("Buscando paquetes NuGet específicos en las carpetas bin de los proyectos");
                 List<string> allNupkgs = new List<string>();
 
-                // Buscar archivos .nupkg recursivamente y luego filtrar por aquellos en carpetas bin/configuración
                 var allFiles = await _fileSystem.FindFilesAsync(
                     solutionDirectory,
                     "*.nupkg",
                     true);
 
-                // Filtrar solo los que están en carpetas bin/configuración o bin/plataforma/configuración
+
                 foreach (var file in allFiles)
                 {
                     var filePath = file.ToLower();
-                    if (filePath.Contains($"\\bin\\{buildConfiguration.ToLower()}\\") ||
-                        filePath.Contains($"\\bin\\") && filePath.Contains($"\\{buildConfiguration.ToLower()}\\"))
+                    var fileName = Path.GetFileName(file);
+
+
+                    bool isInCorrectBinFolder = filePath.Contains($"\\bin\\{buildConfiguration.ToLower()}\\") ||
+                                               (filePath.Contains($"\\bin\\") && filePath.Contains($"\\{buildConfiguration.ToLower()}\\"));
+
+                    if (!isInCorrectBinFolder)
+                        continue;
+
+                    bool matchesKnownVersion = false;
+                    foreach (var projectVersion in projectVersions)
+                    {
+                        if (fileName.StartsWith(projectVersion.Key, StringComparison.OrdinalIgnoreCase) &&
+                            fileName.Contains(projectVersion.Value))
+                        {
+                            matchesKnownVersion = true;
+                            reporter.LogMessage($"Encontrado paquete NuGet de {projectVersion.Key} v{projectVersion.Value}: {fileName}");
+                            break;
+                        }
+                    }
+
+                    if (matchesKnownVersion)
                     {
                         allNupkgs.Add(file);
-                        reporter.LogMessage($"Encontrado paquete NuGet: {file}");
+                    }
+                    else if (isInCorrectBinFolder)
+                    {
+                        reporter.LogMessage($"Ignorando paquete que no coincide con versiones conocidas: {fileName}");
                     }
                 }
 
-                // Si no encontramos nupkgs en las carpetas bin, buscar en la carpeta temporal como respaldo
                 if (!allNupkgs.Any())
                 {
-                    reporter.LogMessage("No NuGet packages found in project bin folders, checking output folder...");
-                    var tempNupkgs = await _fileSystem.FindFilesAsync(outputFolder, "*.nupkg", true);
-                    allNupkgs.AddRange(tempNupkgs);
+                    throw new PackageGenerateException("No se encontraron paquetes NuGet recién generados en las carpetas bin de los proyectos. " +
+                        "Asegúrate de que los proyectos estén configurados para generar paquetes NuGet y que la compilación se haya completado correctamente.");
                 }
 
                 var nupkgList = allNupkgs.Distinct().ToList();
-                reporter.LogMessage($"Found {nupkgList.Count} NuGet packages");
+                reporter.LogMessage($"Found {nupkgList.Count} newly generated NuGet packages");
                 total = nupkgList.Count;
 
                 if (!await _fileSystem.DirectoryExistsAsync(localRepoPath))
@@ -409,7 +545,8 @@ namespace BvNugetPreviewGenerator.Generate
                     reporter.LogMessage($"Error deleting temp folder: {ex.Message}");
                 }
 
-                // Delete installed NuGet packages from cache
+                // Delete installed NuGet packages from c
+                // 
                 reporter.ReportProgress(95, "Removing installed NuGet packages from cache...");
                 foreach (var nupkg in nupkgList)
                 {
