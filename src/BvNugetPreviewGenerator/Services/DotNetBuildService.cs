@@ -31,13 +31,12 @@ namespace BvNugetPreviewGenerator.Generate
         public async Task<string> BuildAsync(
             string projectOrSolutionPath,
             string buildConfiguration,
-            string outputFolder,
             int parallelism,
             IProgressReporter reporter,
             CancellationToken cancellationToken = default)
         {
             return await RunCommandAsync("dotnet",
-                $"build \"{projectOrSolutionPath}\" -c \"{buildConfiguration}\" -o \"{outputFolder}\" -m:{parallelism}",
+                $"build \"{projectOrSolutionPath}\" -c \"{buildConfiguration}\" -m:{parallelism}",
                 reporter, cancellationToken);
         }
 

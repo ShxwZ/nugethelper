@@ -80,13 +80,14 @@ namespace BvNugetPreviewGenerator.Generate
                     _cancellationTokenSource.Token.ThrowIfCancellationRequested();
 
                     reporter.ReportProgress(15, "Building Project");
+
                     await _buildService.BuildAsync(
-                        context.ProjectPath, buildConfiguration, context.TempPath,
-                        ParallelBuild, reporter, _cancellationTokenSource.Token);
+                        context.ProjectPath, buildConfiguration, ParallelBuild, reporter, _cancellationTokenSource.Token);
+
                     _cancellationTokenSource.Token.ThrowIfCancellationRequested();
 
                     reporter.ReportProgress(75, "Copying Nuget Package to Local Repo");
-                    await CopyNugetToLocalRepoAsync(context, reporter);
+                    await CopyNugetToLocalRepoAsync(context, reporter, buildConfiguration);
                     _cancellationTokenSource.Token.ThrowIfCancellationRequested();
 
                     reporter.ReportProgress(95, "Cleaning Up");
@@ -152,11 +153,30 @@ namespace BvNugetPreviewGenerator.Generate
             context.VersionNo = version.ToString();
         }
 
-        private async Task CopyNugetToLocalRepoAsync(PackageGeneratorContext context, IProgressReporter reporter)
+        private async Task CopyNugetToLocalRepoAsync(PackageGeneratorContext context, IProgressReporter reporter, string buildConfiguration)
         {
             var projectName = Path.GetFileNameWithoutExtension(context.ProjectFilename);
             var packageFileName = _nuGetService.GetPackageFileName(projectName, context.VersionNo);
-            var sourcePath = Path.Combine(context.TempPath, packageFileName);
+
+            var projectDirectory = Path.GetDirectoryName(context.ProjectPath);
+
+
+            var binPath = Path.Combine(projectDirectory, "bin", buildConfiguration);
+
+            var sourcePath = string.Empty;
+            var files = await _fileSystem.FindFilesAsync(binPath, $"{projectName}*.{context.VersionNo}.nupkg", true);
+
+            if (files.Any())
+            {
+                sourcePath = files.First();
+                reporter.LogMessage($"Found package in bin folder: {sourcePath}");
+            }
+            else
+            {
+                throw new PackageGenerateException($"NuGet package {packageFileName} not found in bin folder. " +
+                    "Ensure the project is built and the package is generated correctly.");
+            }
+
             var destPath = Path.Combine(context.NugetPath, packageFileName);
 
             await _nuGetService.CopyPackageToRepoAsync(sourcePath, destPath, reporter);
@@ -310,15 +330,46 @@ namespace BvNugetPreviewGenerator.Generate
                 // Compile solution
                 reporter.ReportProgress(30, "Building solution...");
                 await _buildService.BuildAsync(
-                    solutionPath, buildConfiguration, outputFolder, ParallelBuild,
-                    reporter, _cancellationTokenSource.Token);
+                    solutionPath, buildConfiguration, ParallelBuild, reporter, _cancellationTokenSource.Token);
 
                 if (_cancellationTokenSource.IsCancellationRequested) return;
 
-                // Search for NuGet packages in output folder
-                reporter.ReportProgress(70, "Copying NuGet packages...");
-                var nupkgs = await _fileSystem.FindFilesAsync(outputFolder, "*.nupkg", true);
-                var nupkgList = nupkgs.ToList();
+                // Search for NuGet packages in bin folders of projects
+                reporter.ReportProgress(70, "Searching for NuGet packages in project bin folders...");
+                var solutionDirectory = Path.GetDirectoryName(solutionPath);
+
+                // Primero encontrar todos los directorios del proyecto
+                reporter.LogMessage("Buscando paquetes NuGet en las carpetas bin de los proyectos");
+                List<string> allNupkgs = new List<string>();
+
+                // Buscar archivos .nupkg recursivamente y luego filtrar por aquellos en carpetas bin/configuración
+                var allFiles = await _fileSystem.FindFilesAsync(
+                    solutionDirectory,
+                    "*.nupkg",
+                    true);
+
+                // Filtrar solo los que están en carpetas bin/configuración o bin/plataforma/configuración
+                foreach (var file in allFiles)
+                {
+                    var filePath = file.ToLower();
+                    if (filePath.Contains($"\\bin\\{buildConfiguration.ToLower()}\\") ||
+                        filePath.Contains($"\\bin\\") && filePath.Contains($"\\{buildConfiguration.ToLower()}\\"))
+                    {
+                        allNupkgs.Add(file);
+                        reporter.LogMessage($"Encontrado paquete NuGet: {file}");
+                    }
+                }
+
+                // Si no encontramos nupkgs en las carpetas bin, buscar en la carpeta temporal como respaldo
+                if (!allNupkgs.Any())
+                {
+                    reporter.LogMessage("No NuGet packages found in project bin folders, checking output folder...");
+                    var tempNupkgs = await _fileSystem.FindFilesAsync(outputFolder, "*.nupkg", true);
+                    allNupkgs.AddRange(tempNupkgs);
+                }
+
+                var nupkgList = allNupkgs.Distinct().ToList();
+                reporter.LogMessage($"Found {nupkgList.Count} NuGet packages");
                 total = nupkgList.Count;
 
                 if (!await _fileSystem.DirectoryExistsAsync(localRepoPath))

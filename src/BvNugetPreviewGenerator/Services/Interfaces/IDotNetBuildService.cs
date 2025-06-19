@@ -12,6 +12,6 @@ namespace BvNugetPreviewGenerator.Generate
     {
         Task<string> RestorePackagesAsync(string projectOrSolutionPath, IProgressReporter reporter, CancellationToken cancellationToken = default);
         Task<string> CleanAsync(string projectOrSolutionPath, string buildConfiguration, IProgressReporter reporter, CancellationToken cancellationToken = default);
-        Task<string> BuildAsync(string projectOrSolutionPath, string buildConfiguration, string outputFolder, int parallelism, IProgressReporter reporter, CancellationToken cancellationToken = default);
+        Task<string> BuildAsync(string projectOrSolutionPath, string buildConfiguration, int parallelism, IProgressReporter reporter, CancellationToken cancellationToken = default);
     }
 }
