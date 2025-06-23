@@ -81,18 +81,6 @@ namespace BvNugetPreviewGenerator.Generate
             return $"{projectName}.{version}.nupkg";
         }
 
-        public (string PackageId, string Version) ParsePackageFileName(string fileName)
-        {
-            string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
-
-            int firstDotIndex = fileNameWithoutExtension.IndexOf('.');
-            if (firstDotIndex < 0)
-                throw new ArgumentException("Invalid NuGet package filename format", nameof(fileName));
-
-            string packageId = fileNameWithoutExtension.Substring(0, firstDotIndex);
-            string version = fileNameWithoutExtension.Substring(firstDotIndex + 1);
-
-            return (packageId, version);
-        }
+     
     }
 }

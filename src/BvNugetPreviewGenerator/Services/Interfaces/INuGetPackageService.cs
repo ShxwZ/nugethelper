@@ -13,6 +13,5 @@ namespace BvNugetPreviewGenerator.Generate
         Task CopyPackageToRepoAsync(string sourcePath, string destPath, IProgressReporter reporter);
         Task DeleteInstalledPackageAsync(string packageId, string version, IProgressReporter reporter, CancellationToken cancellationToken = default, string customPackagesPath = null);
         string GetPackageFileName(string projectName, string version);
-        (string PackageId, string Version) ParsePackageFileName(string fileName);
     }
 }

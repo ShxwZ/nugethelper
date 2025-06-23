@@ -548,11 +548,12 @@ namespace BvNugetPreviewGenerator.Generate
                 // Delete installed NuGet packages from c
                 // 
                 reporter.ReportProgress(95, "Removing installed NuGet packages from cache...");
-                foreach (var nupkg in nupkgList)
+                foreach (var projectVersion in projectVersions)
                 {
                     try
                     {
-                        var (packageId, version) = _nuGetService.ParsePackageFileName(nupkg);
+                        var packageId = projectVersion.Key;
+                        var version = projectVersion.Value;
                         await _nuGetService.DeleteInstalledPackageAsync(packageId, version, reporter, _cancellationTokenSource.Token);
                         reporter.LogMessage($"Deleted installed NuGet package: {packageId} {version}");
                     }
