@@ -7,19 +7,6 @@
         /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-
         #region Windows Form Designer generated code
 
         /// <summary>
@@ -219,7 +206,7 @@
             this.ShowIcon = false;
             this.ShowInTaskbar = false;
             this.Text = "Generate Nuget Package";
-            this.Shown += new System.EventHandler(this.GenerateForm_ShownAsync);
+            this.Shown += new System.EventHandler(this.GenerateForm_Shown);
             this.flpLayout.ResumeLayout(false);
             this.panel1.ResumeLayout(false);
             this.panel1.PerformLayout();

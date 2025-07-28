@@ -1,76 +1,77 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
-  <!--  This is the file that defines the actual layout and type of the commands.
-        It is divided in different sections (e.g. command definition, command
-        placement, ...), with each defining a specific set of properties.
-        See the comment before each section for more details about how to
-        use it. -->
-
-  <!--  The VSCT compiler (the tool that translates this file into the binary
-        format that VisualStudio will consume) has the ability to run a preprocessor
-        on the vsct file; this preprocessor is (usually) the C++ preprocessor, so
-        it is possible to define includes and macros with the same syntax used
-        in C++ files. Using this ability of the compiler here, we include some files
-        defining some of the constants that we will use inside the file. -->
-
-  <!--This is the file that defines the IDs for all the commands exposed by VisualStudio. -->
-  <Extern href="stdidcmd.h"/>
-
-  <!--This header contains the command ids for the menus provided by the shell. -->
+  <Extern href="stdidcmd.h"/>  
   <Extern href="vsshlids.h"/>
-
-  <!--The Commands section is where commands, menus, and menu groups are defined.
-      This section uses a Guid to identify the package that provides the command defined inside it. -->
   <Commands package="guidBvNugetPreviewGeneratorPackage">
-    <!-- Inside this section we have different sub-sections: one for the menus, another
-    for the menu groups, one for the buttons (the actual commands), one for the combos
-    and the last one for the bitmaps used. Each element is identified by a command id that
-    is a unique pair of guid and numeric identifier; the guid part of the identifier is usually
-    called "command set" and is used to group different command inside a logically related
-    group; your package should define its own command set in order to avoid collisions
-    with command ids defined by other packages. -->
 
-    <!-- In this section you can define new menu groups. A menu group is a container for
-         other menus or buttons (commands); from a visual point of view you can see the
-         group as the part of a menu contained between two lines. The parent of a group
-         must be a menu. -->
+    <!-- Toolbox -->
+    <Menus>
+      <Menu guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxMenu" priority="0x0100" type="Menu">
+        <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="SolnMenuGroup" />
+        <Strings>
+          <ButtonText>NuGet Solution Generation Tools</ButtonText>
+        </Strings>
+      </Menu>
+      <!-- Toolbox menu for projects -->
+      <Menu guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxProjectMenu" priority="0x0100" type="Menu">
+        <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ProjMenuGroup" />
+        <Strings>
+          <ButtonText>NuGet Solution Generation Tools</ButtonText>
+        </Strings>
+      </Menu>
+    </Menus>
+
 	  <Groups>
-		  <!-- Grupo para la solución -->
+		  <!-- Group for solution -->
 		  <Group guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="SolnMenuGroup" priority="0x0600">
 			  <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_SOLNNODE" />
 		  </Group>
-		  <!-- Grupo para la solución -->
+		  <!-- Group for solution -->
 		  <Group guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="AsSolnMenuGroup" priority="0x0600">
 			  <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_SOLNNODE" />
 		  </Group>
-		  <!-- Grupo para el proyecto -->
+		  <!-- Group for project -->
 		  <Group guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ProjMenuGroup" priority="0x0600">
 			  <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_PROJNODE" />
+		  </Group>
+		  <!-- Group for Toolbox options in solution context -->
+		  <Group guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxMenuGroup" priority="0x0100">
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxMenu" />
+		  </Group>
+		  <!-- Group for NuGet utilities in solution context -->
+		  <Group guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxUtilitiesGroup" priority="0x0200">
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxMenu" />
+		  </Group>
+		  <!-- Group for Toolbox options in project context -->
+		  <Group guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxProjectMenuGroup" priority="0x0100">
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxProjectMenu" />
+		  </Group>
+		  <!-- Group for NuGet utilities in project context -->
+		  <Group guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxProjectUtilitiesGroup" priority="0x0200">
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxProjectMenu" />
 		  </Group>
 	  </Groups>
 
     <!--Buttons section. -->
-    <!--This section defines the elements the user can interact with, like a menu command or a button
-        or combo box in a toolbar. -->
 	  <Buttons>
-		  <!-- Botón para la solución -->
+		  <!-- Button for solution -->
 		  <Button guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="GeneratePreviewNugetCommandId" priority="0x0100" type="Button">
-			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="SolnMenuGroup" />
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxMenuGroup" />
 			  <Icon guid="guidImages" id="bmpPic1" />
 			  <Strings>
 				  <ButtonText>Generate Nuget Packages (Project by project)</ButtonText>
 			  </Strings>
 		  </Button>
-		  <!-- Botón para la solución -->
+		  <!-- Button for solution -->
 		  <Button guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="GeneratePreviewNugetCommandId2" priority="0x0102" type="Button">
-			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="AsSolnMenuGroup" />
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxMenuGroup" />
 			  <Icon guid="guidImages" id="bmpPic1" />
 			  <Strings>
 				  <ButtonText>Generate Nuget Packages (All solution)</ButtonText>
 			  </Strings>
 		  </Button>
-		  <!-- Botón para el proyecto -->
+		  <!-- Button for project -->
 		  <Button guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="GeneratePreviewNugetProjectCommandId" priority="0x0101" type="Button">
 			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ProjMenuGroup" />
 			  <Icon guid="guidImages" id="bmpPic1" />
@@ -78,15 +79,60 @@
 				  <ButtonText>Generate Nuget Package (Project)</ButtonText>
 			  </Strings>
 		  </Button>
+		  <!-- Button to change version of all nugets in solution context -->
+		  <Button guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ChangeAllNugetVersionsCommandId" priority="0x0103" type="Button">
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxUtilitiesGroup" />
+			  <Icon guid="guidImages" id="bmpPic2" />
+			  <Strings>
+				  <ButtonText>Change version of all nugets</ButtonText>
+			  </Strings>
+		  </Button>
+		  <!-- Button to delete specific version in solution context -->
+		  <Button guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="DeleteSpecificVersionCommandId" priority="0x0104" type="Button">
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxUtilitiesGroup" />
+			  <Icon guid="guidImages" id="bmpPicX" />
+			  <Strings>
+				  <ButtonText>Delete specific version</ButtonText>
+			  </Strings>
+		  </Button>
+		  
+		  <!-- Duplicate buttons for project context -->
+		  <!-- Button for solution (project context) -->
+		  <Button guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="GeneratePreviewNugetCommandId" priority="0x0100" type="Button">
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxProjectMenuGroup" />
+			  <Icon guid="guidImages" id="bmpPic1" />
+			  <Strings>
+				  <ButtonText>Generate Nuget Packages (Project by project)</ButtonText>
+			  </Strings>
+		  </Button>
+		  <!-- Button for solution (project context) -->
+		  <Button guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="GeneratePreviewNugetCommandId2" priority="0x0102" type="Button">
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxProjectMenuGroup" />
+			  <Icon guid="guidImages" id="bmpPic1" />
+			  <Strings>
+				  <ButtonText>Generate Nuget Packages (All solution)</ButtonText>
+			  </Strings>
+		  </Button>
+		  <!-- Button to change version of all nugets in project context -->
+		  <Button guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ChangeAllNugetVersionsCommandId" priority="0x0103" type="Button">
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxProjectUtilitiesGroup" />
+			  <Icon guid="guidImages" id="bmpPic2" />
+			  <Strings>
+				  <ButtonText>Change version of all nugets</ButtonText>
+			  </Strings>
+		  </Button>
+		  <!-- Button to delete specific version in project context -->
+		  <Button guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="DeleteSpecificVersionCommandId" priority="0x0104" type="Button">
+			  <Parent guid="guidBvNugetPreviewGeneratorPackageCmdSet" id="ToolboxProjectUtilitiesGroup" />
+			  <Icon guid="guidImages" id="bmpPicX" />
+			  <Strings>
+				  <ButtonText>Delete specific version</ButtonText>
+			  </Strings>
+		  </Button>
 	  </Buttons>
 
     <!--The bitmaps section is used to define the bitmaps that are used for the commands.-->
     <Bitmaps>
-      <!--  The bitmap id is defined in a way that is a little bit different from the others:
-            the declaration starts with a guid for the bitmap strip, then there is the resource id of the
-            bitmap strip containing the bitmaps and then there are the numeric ids of the elements used
-            inside a button definition. An important aspect of this declaration is that the element id
-            must be the actual index (1-based) of the bitmap inside the bitmap strip. -->
       <Bitmap guid="guidImages" href="Resources\GeneratePreviewNugetCommand.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows, bmpPicStrikethrough"/>
     </Bitmaps>
   </Commands>
@@ -100,9 +146,17 @@
 		  <IDSymbol name="SolnMenuGroup" value="0x1021" />
 		  <IDSymbol name="AsSolnMenuGroup" value="0x1022" />
 		  <IDSymbol name="ProjMenuGroup" value="0x1020" />
+		  <IDSymbol name="ToolboxMenu" value="0x1023" />
+		  <IDSymbol name="ToolboxMenuGroup" value="0x1024" />
+		  <IDSymbol name="ToolboxUtilitiesGroup" value="0x1025" />
+		  <IDSymbol name="ToolboxProjectMenu" value="0x1026" />
+		  <IDSymbol name="ToolboxProjectMenuGroup" value="0x1027" />
+		  <IDSymbol name="ToolboxProjectUtilitiesGroup" value="0x1028" />
 		  <IDSymbol name="GeneratePreviewNugetCommandId" value="0x0100" />
 		  <IDSymbol name="GeneratePreviewNugetProjectCommandId" value="0x0101" />
 		  <IDSymbol name="GeneratePreviewNugetCommandId2" value="0x0102" />
+		  <IDSymbol name="ChangeAllNugetVersionsCommandId" value="0x0103" />
+		  <IDSymbol name="DeleteSpecificVersionCommandId" value="0x0104" />
 	  </GuidSymbol>
 
     <GuidSymbol name="guidImages" value="{9eada567-6a16-4cfc-a35e-7650a9b700fd}" >

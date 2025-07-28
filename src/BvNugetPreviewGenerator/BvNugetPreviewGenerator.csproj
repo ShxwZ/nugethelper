@@ -51,6 +51,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Commands\BaseCommand.cs" />
+    <Compile Include="Commands\ChangeAllProjectVersionsCommand.cs" />
+    <Compile Include="Commands\DeleteSpecificVersionCommand.cs" />
+    <Compile Include="Commands\GeneratePackagesAsSolutionCommand.cs" />
+    <Compile Include="Commands\GeneratePackagesForProjectCommand.cs" />
+    <Compile Include="Commands\GeneratePackagesForSolutionCommand.cs" />
     <Compile Include="GeneratePreviewNugetCommand.cs" />
     <Compile Include="Services\DotNetBuildService.cs" />
     <Compile Include="Services\FileSystemService.cs" />
@@ -64,7 +70,10 @@
     <Compile Include="Services\Interfaces\IFileSystemService.cs" />
     <Compile Include="Services\Interfaces\INuGetPackageService.cs" />
     <Compile Include="Generate\IPackageGenerator.cs" />
+    <Compile Include="Services\Interfaces\IPackageGenerationService.cs" />
+    <Compile Include="Services\Interfaces\IPackageWorkflowServices.cs" />
     <Compile Include="Services\Interfaces\IProgressReporter.cs" />
+    <Compile Include="Services\Interfaces\ISolutionService.cs" />
     <Compile Include="Services\NuGetPackageService.cs" />
     <Compile Include="Generate\PackageGenerateProgress.cs" />
     <Compile Include="Generate\PackageGeneratorProgressAdapter.cs" />
@@ -82,6 +91,21 @@
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Services\PackageDiscoveryService.cs" />
+    <Compile Include="Services\PackageGenerationService.cs" />
+    <Compile Include="Services\PackageWorkflowService.cs" />
+    <Compile Include="Services\RepositoryCleanupService.cs" />
+    <Compile Include="Services\SolutionService.cs" />
+    <Compile Include="UI\Interfaces\IPackageGenerationPresenter.cs" />
+    <Compile Include="UI\Interfaces\IPackageGenerationView.cs" />
+    <Compile Include="UI\Models\PackageGenerationModels.cs" />
+    <Compile Include="UI\Presenters\PackageGenerationPresenter.cs" />
+    <Compile Include="Versions\ProgressForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Versions\VersionInputDialog.cs">
+      <SubType>Form</SubType>
     </Compile>
   </ItemGroup>
   <ItemGroup>
